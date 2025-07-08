@@ -1,19 +1,15 @@
-use axum::{extract::State, Json};
+use axum::{extract::{Path, State}, Json};
+use uuid::Uuid;
 use crate::app_state::AppState;
-use serde::Serialize;
+use crate::models::user::User;
 
-#[derive(Serialize)]
-pub struct DummyUserResponse {
-    pub id: u32,
-    pub username: String,
-    pub email: String,
-}
-
-pub async fn get_user_info(State(_state): State<AppState>) -> Json<DummyUserResponse> {
-    // Dummy hardcoded user
-    Json(DummyUserResponse {
-        id: 1,
-        username: "dummy_user".to_string(),
-        email: "dummy@example.com".to_string(),
-    })
+pub async fn get_user_info(
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<User>, (axum::http::StatusCode, String)> {
+    match state.user_service.get_user_by_id(user_id).await {
+        Ok(Some(user)) => Ok(Json(user)),
+        Ok(None) => Err((axum::http::StatusCode::NOT_FOUND, "User not found".into())),
+        Err(e) => Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
+    }
 }

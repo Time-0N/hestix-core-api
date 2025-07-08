@@ -1,2 +1,2 @@
 pub mod user_handler;
-pub(crate) mod auth_handler;
+pub mod auth_handler;

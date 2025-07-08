@@ -1,14 +1,10 @@
-use axum::{Json, extract::State};
+use axum::Router;
+use axum::routing::post;
 use crate::app_state::AppState;
-use crate::dto::user_dto::{UserLoginRequest, UserLoginResponse};
+use crate::routes::auth_routes::register_user_handler;
 
-pub async fn login(
-    State(state): State<AppState>,
-    Json(payload): Json<UserLoginRequest>
-) -> Json<UserLoginResponse> {
-    // Mock response for now
-    Json(UserLoginResponse {
-        token: "mock".to_string(),
-        expires_in: 3600,
-    })
+pub fn auth_routes(state: AppState) -> Router {
+    Router::new()
+        .route("/register", post(register_user_handler))
+        .with_state(state)
 }

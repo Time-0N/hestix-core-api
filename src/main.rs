@@ -5,7 +5,6 @@ use axum::{
 use tokio::net::TcpListener;
 use dotenvy::dotenv;
 use std::net::SocketAddr;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use std::sync::Arc;
 use sqlx::postgres::PgPoolOptions;
 use crate::app_state::AppState;
@@ -16,6 +15,10 @@ mod routes;
 mod dto;
 mod services;
 mod app_state;
+mod repositories;
+mod models;
+mod security;
+mod setup;
 
 #[tokio::main]
 async fn  main() {
@@ -30,8 +33,19 @@ async fn  main() {
         .await
         .expect("Could not connect to DB");
 
+    sqlx::query("SELECT 1")
+        .execute(&db_pool)
+        .await.expect("DB not responding");
+
+    tracing::info!("Successfully connected and queried the DB");
+
+    let keycloak_service = setup::keycloak::init_keycloak_service();
+    let services = setup::services::init_services(db_pool.clone(), keycloak_service);
+
     let state = AppState {
         db: Arc::new(db_pool),
+        auth_service: Arc::new(services.auth_service),
+        user_service: Arc::new(services.user_service),
     };
 
     let app = create_router(state.clone());

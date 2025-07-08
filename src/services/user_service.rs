@@ -1,7 +1,35 @@
-pub fn login_user(username: &str, password: &str) -> Option<String> {
-    if username == "admin" && password == "secret" {
-        Some("mock-token-123".to_string())
-    } else {
-        None
+use sqlx::PgPool;
+use uuid::Uuid;
+use crate::dto::auth::RegisterUserRequest;
+use crate::models::user::User;
+use crate::repositories::user_repository;
+use crate::security::keycloak::KeycloakError;
+use crate::services::keycloak_service::KeycloakService;
+
+#[derive(Clone)]
+pub struct UserService {
+    pub db: PgPool,
+    pub keycloak_service: KeycloakService,
+}
+
+impl UserService {
+    pub fn new(db: PgPool, keycloak_service:KeycloakService) -> Self {
+        Self { db, keycloak_service }
+    }
+
+    pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+        user_repository::find_user_by_id(&self.db, user_id).await
+    }
+
+    pub async fn register_user(
+        &self,
+        req: RegisterUserRequest,
+    ) -> Result<(), KeycloakError> {
+        let token = std::env::var("KEYCLOAK_ADMIN_TOKEN")
+            .expect("KEYCLOAK_ADMIN_TOKEN must be set");
+
+        self.keycloak_service
+            .register_user(req, &token)
+            .await
     }
 }
