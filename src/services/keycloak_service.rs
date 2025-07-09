@@ -12,26 +12,31 @@ impl KeycloakService {
     pub fn new(client: KeycloakClient) -> Self {
         Self { client }
     }
-
-    pub async fn register_user(
+    pub async fn create_keycloak_user(
         &self,
         req: RegisterUserRequest,
-        token: &str,
-    ) -> Result<(), KeycloakError> {
+    ) -> Result<String, KeycloakError> {
+        let token = self.fetch_admin_token().await?;
         let user = KeycloakUserCreate::new(req.username, req.email, req.password);
-        let result = self.client.create_user(&user, token).await;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(KeycloakError::UserAlreadyExists) => Ok(()),
+        match self.client.create_user(&user, &token).await {
+            Ok(id) => Ok(id),
+            Err(KeycloakError::UserAlreadyExists) => {
+                tracing::warn!("Tried to register a user that already exists: {}", user.email);
+                Err(KeycloakError::UserAlreadyExists)
+            }
             Err(e) => {
                 tracing::error!("Keycloak error: {:?}", e);
                 Err(e)
             }
         }
     }
+    
+    pub async fn check_health(&self) -> bool {
+        self.client.check_health().await
+    }
 
-    pub async fn fetch_admin_token(&self) -> Result<String, KeycloakError> {
+    async fn fetch_admin_token(&self) -> Result<String, KeycloakError> {
         self.client.fetch_admin_token().await
     }
 }

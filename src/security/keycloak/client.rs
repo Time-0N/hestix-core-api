@@ -39,7 +39,11 @@ impl KeycloakClient {
         Ok(token_response.access_token)
     }
 
-    pub async fn create_user(&self, user: &KeycloakUserCreate, token: &str) -> Result<(), KeycloakError> {
+    pub async fn create_user(
+        &self,
+        user: &KeycloakUserCreate,
+        token: &str
+    ) -> Result<String, KeycloakError> {
         let url = format!(
             "{}/admin/realms/{}/users",
             self.config.base_url, self.config.realm
@@ -53,7 +57,15 @@ impl KeycloakClient {
             .await?;
 
         match res.status().as_u16() {
-            201 => Ok(()),
+            201 => {
+                if let Some(location) = res.headers().get("Location") {
+                    let location_str = location.to_str().unwrap_or_default();
+                    if let Some(id) = location_str.rsplit('/').next() {
+                        return Ok(id.to_string());
+                    }
+                }
+                Err(KeycloakError::MissingUserId)
+            }
             409 => Err(KeycloakError::UserAlreadyExists),
             401 => Err(KeycloakError::Unauthorized),
             _ => {
@@ -61,7 +73,24 @@ impl KeycloakClient {
                 Err(KeycloakError::UnexpectedResponse(text))
             }
         }
+    }
 
+    pub async fn check_health(&self) -> bool {
+        let url = format!("{}/realms/{}", self.config.base_url, self.config.realm);
 
+        match self.client.get(&url).send().await {
+            Ok(response) if response.status().is_success() => {
+                tracing::info!("✅ Keycloak health check successful at {}", url);
+                true
+            }
+            Ok(response) => {
+                tracing::warn!("⚠️ Keycloak health check returned non-success status: {}", response.status());
+                false
+            }
+            Err(e) => {
+                tracing::error!("❌ Keycloak health check failed: {:?}", e);
+                false
+            }
+        }
     }
 }

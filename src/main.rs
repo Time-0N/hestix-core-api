@@ -21,7 +21,7 @@ mod security;
 mod setup;
 
 #[tokio::main]
-async fn  main() {
+async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
 
@@ -40,6 +40,18 @@ async fn  main() {
     tracing::info!("Successfully connected and queried the DB");
 
     let keycloak_service = setup::keycloak::init_keycloak_service();
+    tokio::spawn({
+        let kc = keycloak_service.clone();
+        async move {
+            if kc.client.check_health().await {
+                tracing::info!("✅ Connected to Keycloak");
+            } else {
+                tracing::error!("❌ Failed to connect to Keycloak");
+            }
+        }
+    });
+
+
     let services = setup::services::init_services(db_pool.clone(), keycloak_service);
 
     let state = AppState {

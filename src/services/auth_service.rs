@@ -19,14 +19,12 @@ impl AuthService {
         &self,
         req: RegisterUserRequest,
     ) -> Result<(), KeycloakError> {
-        let token = self.keycloak_service.fetch_admin_token().await?;
-
-        self.keycloak_service
-            .register_user(req.clone(), &token)
+        let keycloak_id = self.keycloak_service
+            .create_keycloak_user(req.clone())
             .await?;
 
         self.user_service
-            .register_user(req)
+            .create_user(req, keycloak_id)
             .await
             .map_err(|e| KeycloakError::Other(e.to_string()))
     }
