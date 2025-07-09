@@ -1,15 +1,10 @@
-use axum::extract::State;
-use axum::Json;
-use reqwest::StatusCode;
+use axum::Router;
+use axum::routing::post;
 use crate::app_state::AppState;
-use crate::dto::auth::RegisterUserRequest;
+use crate::handlers::auth_handler::register_user_handler;
 
-pub async fn register_user_handler(
-    State(state): State<AppState>,
-    Json(payload): Json<RegisterUserRequest>
-) -> Result<(), (StatusCode, String)> {
-    state.auth_service
-        .register_user(payload)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+pub fn auth_routes(state: AppState) -> Router {
+    Router::new()
+        .route("/register", post(register_user_handler))
+        .with_state(state)
 }

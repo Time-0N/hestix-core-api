@@ -18,3 +18,20 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User
 
     Ok(user)
 }
+
+pub async fn insert_user(pool: &PgPool, user: &User) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        INSERT INTO users (id, keycloak_id, username, email)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        user.id,
+        user.keycloak_id,
+        user.username,
+        user.email
+    )
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}

@@ -1,10 +1,9 @@
 use std::sync::Arc;
-use sqlx::PgPool;
+use sqlx::{Error, PgPool};
 use uuid::Uuid;
 use crate::dto::auth::RegisterUserRequest;
 use crate::models::user::User;
 use crate::repositories::user_repository;
-use crate::security::keycloak::KeycloakError;
 use crate::services::keycloak_service::KeycloakService;
 
 #[derive(Clone)]
@@ -18,19 +17,22 @@ impl UserService {
         Self { db, keycloak_service }
     }
 
-    pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+    pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<User>, Error> {
         user_repository::find_user_by_id(&self.db, user_id).await
     }
 
-    pub async fn register_user(
+    pub async fn create_user(
         &self,
         req: RegisterUserRequest,
-    ) -> Result<(), KeycloakError> {
-        let token = std::env::var("KEYCLOAK_ADMIN_TOKEN")
-            .expect("KEYCLOAK_ADMIN_TOKEN must be set");
+        keycloak_id: String
+    ) -> Result<(), Error> {
+        let new_user = User {
+            id: Uuid::new_v4(),
+            keycloak_id,
+            username: req.username,
+            email: req.email,
+        };
 
-        self.keycloak_service
-            .register_user(req, &token)
-            .await
+        user_repository::insert_user(&self.db, &new_user).await
     }
 }

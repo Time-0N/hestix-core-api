@@ -22,4 +22,7 @@ pub enum KeycloakError {
 
     #[error("Other keycloak error: {0}")]
     Other(String),
+
+    #[error("Missing keycloak user id")]
+    MissingUserId,
 }
