@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::dto::auth::RegisterUserRequest;
@@ -8,12 +9,12 @@ use crate::services::keycloak_service::KeycloakService;
 
 #[derive(Clone)]
 pub struct UserService {
-    pub db: PgPool,
-    pub keycloak_service: KeycloakService,
+    pub db: Arc<PgPool>,
+    pub keycloak_service: Arc<KeycloakService>,
 }
 
 impl UserService {
-    pub fn new(db: PgPool, keycloak_service:KeycloakService) -> Self {
+    pub fn new(db: Arc<PgPool>, keycloak_service: Arc<KeycloakService> ) -> Self {
         Self { db, keycloak_service }
     }
 
