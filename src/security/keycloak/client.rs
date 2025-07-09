@@ -39,6 +39,29 @@ impl KeycloakClient {
         Ok(token_response.access_token)
     }
 
+    pub async fn fetch_user_token(&self, username: &str, password: &str) -> Result<TokenResponse, KeycloakError> {
+        let url = format!(
+            "{}/realms/{}/protocol/openid-connect/token",
+            self.config.base_url, self.config.realm
+        );
+
+        let res = self.client
+            .post(&url)
+            .form(&[
+                ("grant_type", "password"),
+                ("client_id", &self.config.client_id),
+                ("client_secret", &self.config.client_secret),
+                ("username", username),
+                ("password", password),
+            ])
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let token_response: TokenResponse = res.json().await.map_err(|_| KeycloakError::MissingToken)?;
+        Ok(token_response)
+    }
+
     pub async fn create_user(
         &self,
         user: &KeycloakUserCreate,

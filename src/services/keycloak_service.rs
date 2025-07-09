@@ -1,4 +1,5 @@
 use crate::dto::auth::RegisterUserRequest;
+use crate::dto::auth::token_response::TokenResponse;
 use crate::security::keycloak::client::KeycloakClient;
 use crate::dto::keycloak::keycloak_user_create::KeycloakUserCreate;
 use crate::security::keycloak::KeycloakError;
@@ -30,6 +31,10 @@ impl KeycloakService {
                 Err(e)
             }
         }
+    }
+    
+    pub async fn fetch_user_token(&self, username: &str, password: &str) -> Result<TokenResponse, KeycloakError> {
+        self.client.fetch_user_token(username, password).await
     }
     
     pub async fn check_health(&self) -> bool {
