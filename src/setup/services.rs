@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::services::{
     auth_service::AuthService,
     user_service::UserService,
@@ -7,19 +8,17 @@ use crate::services::{
 use sqlx::PgPool;
 
 pub struct ServiceBundle {
-    pub auth_service: AuthService,
-    pub user_service: UserService,
-    pub keycloak_service: KeycloakService,
+    pub auth_service: Arc<AuthService>,
+    pub user_service: Arc<UserService>,
 }
 
-pub fn init_services(db_pool: PgPool, keycloak_service: KeycloakService) -> ServiceBundle {
-    let user_service = UserService::new(db_pool.clone(), keycloak_service.clone());
-    let auth_service = AuthService::new(keycloak_service.clone(), user_service.clone());
+pub fn init_services(db_pool: Arc<PgPool>, keycloak_service: Arc<KeycloakService>) -> ServiceBundle {
+    let user_service = Arc::new(UserService::new(db_pool.clone(), keycloak_service.clone()));
+    let auth_service = Arc::new(AuthService::new(keycloak_service.clone(), user_service.clone()));
 
     ServiceBundle {
         auth_service,
         user_service,
-        keycloak_service,
     }
 }
 

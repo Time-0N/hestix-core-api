@@ -27,15 +27,15 @@ async fn  main() {
 
 
     let db_url = std::env::var("DATABASE_URL").expect("MISSING DATABASE_URL");
-    let db_pool = PgPoolOptions::new()
+    let db_pool = Arc::new(
+        PgPoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
         .await
-        .expect("Could not connect to DB");
+        .expect("Could not connect to DB"),
+    );
 
-    sqlx::query("SELECT 1")
-        .execute(&db_pool)
-        .await.expect("DB not responding");
+    sqlx::query("SELECT 1").execute(&*db_pool).await.expect("DB not responding");
 
     tracing::info!("Successfully connected and queried the DB");
 
@@ -43,9 +43,9 @@ async fn  main() {
     let services = setup::services::init_services(db_pool.clone(), keycloak_service);
 
     let state = AppState {
-        db: Arc::new(db_pool),
-        auth_service: Arc::new(services.auth_service),
-        user_service: Arc::new(services.user_service),
+        db: db_pool,
+        auth_service: services.auth_service,
+        user_service: services.user_service,
     };
 
     let app = create_router(state.clone());
