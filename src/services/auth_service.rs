@@ -26,7 +26,7 @@ impl AuthService {
             .await?;
 
         self.user_service
-            .create_user(req, keycloak_id)
+            .create_user(req, keycloak_id.parse().unwrap())
             .await
             .map_err(|e| KeycloakError::Other(e.to_string()))
     }

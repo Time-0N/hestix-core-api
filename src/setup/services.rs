@@ -13,7 +13,7 @@ pub struct ServiceBundle {
 }
 
 pub fn init_services(db_pool: Arc<PgPool>, keycloak_service: Arc<KeycloakService>) -> ServiceBundle {
-    let user_service = Arc::new(UserService::new(db_pool.clone(), keycloak_service.clone()));
+    let user_service = Arc::new(UserService::new(db_pool.clone()));
     let auth_service = Arc::new(AuthService::new(keycloak_service.clone(), user_service.clone()));
 
     ServiceBundle {

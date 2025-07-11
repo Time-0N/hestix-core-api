@@ -19,6 +19,7 @@ mod repositories;
 mod models;
 mod security;
 mod setup;
+mod macros;
 
 #[tokio::main]
 async fn main() {
@@ -44,9 +45,9 @@ async fn main() {
         let kc = keycloak_service.clone();
         async move {
             if kc.client.check_health().await {
-                tracing::info!("✅ Connected to Keycloak");
+                tracing::info!("Connected to Keycloak");
             } else {
-                tracing::error!("❌ Failed to connect to Keycloak");
+                tracing::error!("Failed to connect to Keycloak");
             }
         }
     });
