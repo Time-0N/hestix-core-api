@@ -2,7 +2,7 @@ use axum::{extract::{ State}, Json};
 use axum::http::StatusCode;
 use uuid::Uuid;
 use crate::app_state::AppState;
-use crate::models::user::User;
+use crate::user::user::User;
 use crate::security::keycloak::extractor::Claims;
 
 pub async fn get_user_info(

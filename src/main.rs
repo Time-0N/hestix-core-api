@@ -20,6 +20,7 @@ mod models;
 mod security;
 mod setup;
 mod macros;
+mod user;
 
 #[tokio::main]
 async fn main() {

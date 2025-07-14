@@ -8,9 +8,9 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    models::user::User,
     security::keycloak::extractor::Claims,
 };
+use crate::user::user::User;
 
 pub struct CurrentUser(pub Arc<User>);
 

@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::user::User;
+use crate::user::user::User;
 
 pub async fn find_user_by_keycloak_id(pool: &PgPool, keycloak_id: Uuid) -> Result<Option<User>, sqlx::Error> {
     let user = sqlx::query_as!(

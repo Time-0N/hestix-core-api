@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use sqlx::PgPool;
 use crate::services::auth_service::AuthService;
-use crate::services::user_service::UserService;
+use crate::user::user_service::UserService;
 
 #[derive(Clone)]
 pub struct AppState {
