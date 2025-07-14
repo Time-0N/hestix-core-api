@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use moka::future::Cache;
 use uuid::Uuid;
-use crate::user::user::User;
+use crate::models::user::UserEntity;
 
-pub type UserCache = Cache<Uuid, Arc<User>>;
+pub type UserCache = Cache<Uuid, Arc<UserEntity>>;
 
 pub fn new_user_cache() -> UserCache {
     Cache::builder()

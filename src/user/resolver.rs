@@ -2,20 +2,20 @@ use std::sync::Arc;
 use moka::future::Cache;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::user::user::User;
-use crate::user::user_repository;
+use crate::models::user::UserEntity;
+use crate::repositories::user_repository;
 
 pub struct UserResolver {
     pub db: Arc<PgPool>,
-    pub cache: Cache<Uuid, Arc<User>>,
+    pub cache: Cache<Uuid, Arc<UserEntity>>,
 }
 
 impl UserResolver {
-    pub fn new (db: Arc<PgPool>, cache: Cache<Uuid, Arc<User>>) -> Self {
+    pub fn new (db: Arc<PgPool>, cache: Cache<Uuid, Arc<UserEntity>>) -> Self {
         Self { db, cache }
     }
 
-    pub async fn resolver_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<Option<Arc<User>>, sqlx::Error> {
+    pub async fn resolver_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<Option<Arc<UserEntity>>, sqlx::Error> {
         if let Some(user) = self.cache.get(&keycloak_id).await {
             return Ok(Some(user));
         }
@@ -28,5 +28,15 @@ impl UserResolver {
         }
 
         Ok(None)
+    }
+
+    pub async fn insert_and_cache_user(
+        &self,
+        user: UserEntity,
+    ) -> Result<(), sqlx::Error> {
+        let arc_user = Arc::new(user);
+        user_repository::insert_user(&self.db, &arc_user).await?;
+        self.cache.insert(arc_user.keycloak_id, arc_user).await;
+        Ok(())
     }
 }

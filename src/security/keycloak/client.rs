@@ -1,8 +1,8 @@
-use reqwest::Client;
 use crate::dto::auth::token_response::TokenResponse;
-use crate::security::keycloak::config::KeycloakConfig;
 use crate::dto::keycloak::keycloak_user_create::KeycloakUserCreate;
+use crate::security::keycloak::config::KeycloakConfig;
 use crate::security::keycloak::KeycloakError;
+use reqwest::Client;
 
 #[derive(Clone)]
 pub struct KeycloakClient {
@@ -103,15 +103,15 @@ impl KeycloakClient {
 
         match self.client.get(&url).send().await {
             Ok(response) if response.status().is_success() => {
-                tracing::info!("✅ Keycloak health check successful at {}", url);
+                tracing::info!("Keycloak health check successful at {}", url);
                 true
             }
             Ok(response) => {
-                tracing::warn!("⚠️ Keycloak health check returned non-success status: {}", response.status());
+                tracing::warn!("⚠Keycloak health check returned non-success status: {}", response.status());
                 false
             }
             Err(e) => {
-                tracing::error!("❌ Keycloak health check failed: {:?}", e);
+                tracing::error!("Keycloak health check failed: {:?}", e);
                 false
             }
         }

@@ -1,8 +1,8 @@
-use crate::dto::auth::RegisterUserRequest;
 use crate::dto::auth::token_response::TokenResponse;
+use crate::security::keycloak::claims::KeycloakClaims;
 use crate::security::keycloak::client::KeycloakClient;
-use crate::dto::keycloak::keycloak_user_create::KeycloakUserCreate;
 use crate::security::keycloak::KeycloakError;
+use crate::security::keycloak::validator::validate_token_and_extract_claims;
 
 #[derive(Clone)]
 pub struct KeycloakService {
@@ -13,28 +13,13 @@ impl KeycloakService {
     pub fn new(client: KeycloakClient) -> Self {
         Self { client }
     }
-    pub async fn create_keycloak_user(
-        &self,
-        req: RegisterUserRequest,
-    ) -> Result<String, KeycloakError> {
-        let token = self.fetch_admin_token().await?;
-        let user = KeycloakUserCreate::new(req.username, req.email, req.password);
-
-        match self.client.create_user(&user, &token).await {
-            Ok(id) => Ok(id),
-            Err(KeycloakError::UserAlreadyExists) => {
-                tracing::warn!("Tried to register a user that already exists: {}", user.email);
-                Err(KeycloakError::UserAlreadyExists)
-            }
-            Err(e) => {
-                tracing::error!("Keycloak error: {:?}", e);
-                Err(e)
-            }
-        }
-    }
     
     pub async fn fetch_user_token(&self, username: &str, password: &str) -> Result<TokenResponse, KeycloakError> {
         self.client.fetch_user_token(username, password).await
+    }
+
+    pub async fn validate_token(&self, token: &str) -> Result<KeycloakClaims, KeycloakError> {
+        validate_token_and_extract_claims(token).await
     }
     
     pub async fn check_health(&self) -> bool {

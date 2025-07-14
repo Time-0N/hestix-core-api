@@ -41,6 +41,7 @@ async-trait = "0.1.88"
 # Caching
 moka = { version = "0.12.10", features = ["future"] }
 futures = "0.3.31"
+chrono = { version = "0.4.41", features = ["serde"] }
 
 # Cargo mirror
 [source.crates-io]

@@ -25,4 +25,7 @@ pub enum KeycloakError {
 
     #[error("Missing keycloak user id")]
     MissingUserId,
+
+    #[error("JWT error: {0}")]
+    Jwt(String),
 }

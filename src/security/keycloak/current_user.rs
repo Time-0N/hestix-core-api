@@ -10,9 +10,9 @@ use crate::{
     app_state::AppState,
     security::keycloak::extractor::Claims,
 };
-use crate::user::user::User;
+use crate::models::user::UserEntity;
 
-pub struct CurrentUser(pub Arc<User>);
+pub struct CurrentUser(pub Arc<UserEntity>);
 
 impl<S> FromRequestParts<S> for CurrentUser
 where

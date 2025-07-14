@@ -21,6 +21,7 @@ mod security;
 mod setup;
 mod macros;
 mod user;
+mod error;
 
 #[tokio::main]
 async fn main() {

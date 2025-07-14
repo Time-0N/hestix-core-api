@@ -7,7 +7,7 @@ use crate::services::{
 use sqlx::PgPool;
 use crate::user::cache::new_user_cache;
 use crate::user::resolver::UserResolver;
-use crate::user::user_service::UserService;
+use crate::services::user_service::UserService;
 
 pub struct ServiceBundle {
     pub auth_service: Arc<AuthService>,
