@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use sqlx::{Error};
+use time::OffsetDateTime;
 use uuid::Uuid;
 use crate::user::resolver::UserResolver;
 use crate::models::user::UserEntity;
@@ -50,8 +51,9 @@ impl UserService {
                 keycloak_id,
                 username,
                 email: claims.email.clone().unwrap_or_default(),
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
+                created_at: OffsetDateTime::now_utc(),
+                updated_at: OffsetDateTime::now_utc(),
+
             };
 
             self.user_resolver
