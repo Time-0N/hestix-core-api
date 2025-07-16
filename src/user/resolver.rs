@@ -1,27 +1,29 @@
 use std::sync::Arc;
 use moka::future::Cache;
-use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::user::UserEntity;
-use crate::repositories::user_repository;
+use crate::repositories::user_repository::UserRepository;
 
 pub struct UserResolver {
-    pub db: Arc<PgPool>,
+    user_repository: Arc<dyn UserRepository>,
     pub cache: Cache<Uuid, Arc<UserEntity>>,
 }
 
 impl UserResolver {
-    pub fn new (db: Arc<PgPool>, cache: Cache<Uuid, Arc<UserEntity>>) -> Self {
-        Self { db, cache }
+    pub fn new(user_repository: Arc<dyn UserRepository>, cache: Cache<Uuid, Arc<UserEntity>>) -> Self {
+        Self { user_repository, cache }
     }
 
-    pub async fn resolver_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<Option<Arc<UserEntity>>, sqlx::Error> {
+    pub async fn resolver_by_keycloak_id(
+        &self,
+        keycloak_id: Uuid,
+    ) -> Result<Option<Arc<UserEntity>>, sqlx::Error> {
         if let Some(user) = self.cache.get(&keycloak_id).await {
             return Ok(Some(user));
         }
 
-        let user = user_repository::find_user_by_keycloak_id(&self.db, keycloak_id).await?;
-        if let Some(u) = user {
+        let maybe_user = self.user_repository.find_by_keycloak_id(keycloak_id).await?;
+        if let Some(u) = maybe_user {
             let arc_user = Arc::new(u);
             self.cache.insert(keycloak_id, arc_user.clone()).await;
             return Ok(Some(arc_user));
@@ -30,12 +32,16 @@ impl UserResolver {
         Ok(None)
     }
 
+    /// Insert via repo, then cache
     pub async fn insert_and_cache_user(
         &self,
-        user: UserEntity,
+        new_user: UserEntity,
     ) -> Result<(), sqlx::Error> {
-        let arc_user = Arc::new(user);
-        user_repository::insert_user(&self.db, &arc_user).await?;
+        // insert into DB
+        self.user_repository.insert(&new_user).await?;
+
+        // then cache it
+        let arc_user = Arc::new(new_user);
         self.cache.insert(arc_user.keycloak_id, arc_user).await;
         Ok(())
     }

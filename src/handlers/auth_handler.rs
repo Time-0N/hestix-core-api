@@ -1,15 +1,15 @@
-use axum::extract::State;
-use axum::Json;
+use std::sync::Arc;
+use axum::{Extension, Json};
 use reqwest::StatusCode;
-use crate::app_state::AppState;
 use crate::dto::auth::login_request::LoginRequest;
 use crate::dto::auth::token_response::TokenResponse;
+use crate::services::auth_service::AuthService;
 
 pub async fn login_user_handler(
-    State(state): State<AppState>,
+    Extension(svc): Extension<Arc<AuthService>>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<TokenResponse>, (StatusCode, String)> {
-    state.auth_service
+    svc
         .login_user(payload)
         .await
         .map(Json)

@@ -1,13 +1,14 @@
-use axum::{extract::{ State}, Json};
+use std::sync::Arc;
+use axum::{Extension, Json};
 use axum::http::StatusCode;
 use uuid::Uuid;
-use crate::app_state::AppState;
 use crate::dto::user::user_response::UserResponse;
 use crate::require_role;
 use crate::security::keycloak::extractor::Claims;
+use crate::services::user_service::UserService;
 
 pub async fn get_user_info(
-    State(state): State<AppState>,
+    Extension(svc): Extension<Arc<UserService>>,
     Claims(claims): Claims,
 ) -> Result<Json<UserResponse>, (StatusCode, String)> {
     require_role!(claims, "user");
@@ -19,8 +20,7 @@ pub async fn get_user_info(
     let keycloak_id = Uuid::parse_str(sub)
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid UUID in `sub`".into()))?;
 
-    let user = state
-        .user_service
+    let user = svc
         .get_user_by_keycloak_id(keycloak_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?

@@ -7,7 +7,9 @@ use crate::routes::auth_routes::auth_routes;
 use crate::routes::user_routes::user_routes;
 
 pub fn create_router(state: AppState) -> Router {
+    let AppState { user_service, auth_service, .. } = state;
+
     Router::new()
-        .nest("/api/user", user_routes(state.clone()))
-        .nest("/api/auth", auth_routes(state))
+        .nest("/api/user", user_routes(user_service))
+        .nest("/api/auth", auth_routes(auth_service))
 }
