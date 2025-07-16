@@ -11,7 +11,7 @@ pub async fn get_user_info(
     Extension(svc): Extension<Arc<UserService>>,
     Claims(claims): Claims,
 ) -> Result<Json<UserResponse>, (StatusCode, String)> {
-    require_role!(claims, "user");
+    require_role!(claims, "cache");
 
     let sub = claims.sub
         .as_deref()

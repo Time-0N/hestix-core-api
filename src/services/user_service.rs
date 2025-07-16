@@ -2,7 +2,7 @@ use std::sync::Arc;
 use sqlx::{Error};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::user::resolver::UserResolver;
+use crate::cache::resolver::UserResolver;
 use crate::models::user::UserEntity;
 use crate::security::keycloak::claims::KeycloakClaims;
 use crate::security::keycloak::KeycloakError;

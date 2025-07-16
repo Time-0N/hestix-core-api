@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 use moka::future::Cache;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -10,7 +11,7 @@ use crate::security::keycloak::config::KeycloakConfig;
 use crate::services::auth_service::AuthService;
 use crate::services::user_service::UserService;
 use crate::services::keycloak_service::KeycloakService;
-use crate::user::resolver::UserResolver;
+use crate::cache::resolver::UserResolver;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -26,6 +27,7 @@ impl AppState {
         let db = Arc::new(pool);
 
         let cache: Cache<Uuid, Arc<UserEntity>> = Cache::builder()
+            .time_to_live(Duration::from_secs(600))
             .max_capacity(10_000)
             .build();
 

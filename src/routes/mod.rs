@@ -10,6 +10,6 @@ pub fn create_router(state: AppState) -> Router {
     let AppState { user_service, auth_service, .. } = state;
 
     Router::new()
-        .nest("/api/user", user_routes(user_service))
+        .nest("/api/cache", user_routes(user_service))
         .nest("/api/auth", auth_routes(auth_service))
 }

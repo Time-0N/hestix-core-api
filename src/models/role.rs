@@ -12,7 +12,7 @@ pub enum Role {
 impl Role {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Role::User => "user",
+            Role::User => "cache",
             Role::NasReader => "nas_reader",
             Role::NasWriter => "nas_writer",
             Role::StreamConsumer => "stream_consumer",

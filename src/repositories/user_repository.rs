@@ -4,16 +4,16 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::user::UserEntity;
 
-/// Defines all user‐related data operations.
+/// Defines all cache‐related data operations.
 #[async_trait]
 pub trait UserRepository: Send + Sync {
-    /// Look up a user by their Keycloak ID.
+    /// Look up a cache by their Keycloak ID.
     async fn find_by_keycloak_id(
         &self,
         keycloak_id: Uuid,
     ) -> Result<Option<UserEntity>, sqlx::Error>;
 
-    /// Insert a new user record.
+    /// Insert a new cache record.
     async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
 }
 

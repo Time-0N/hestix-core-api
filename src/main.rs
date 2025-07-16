@@ -8,7 +8,7 @@ mod repositories;
 mod models;
 mod security;
 mod macros;
-mod user;
+mod cache;
 mod error;
 mod config;
 

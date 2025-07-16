@@ -29,7 +29,7 @@ where
             match validate_token_and_extract_claims(token).await {
                 Ok(claims) => {
                     tracing::info!(
-                        "JWT verified for user with roles: {:?}",
+                        "JWT verified for cache with roles: {:?}",
                         claims.realm_access.roles
                     );
                     Ok(Claims(claims))
