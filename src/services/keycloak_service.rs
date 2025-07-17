@@ -1,9 +1,9 @@
 use crate::dto::auth::token_response::TokenResponse;
 use crate::dto::keycloak::keycloak_user::KeycloakUser;
-use crate::security::keycloak::claims::KeycloakClaims;
-use crate::security::keycloak::client::KeycloakClient;
-use crate::security::keycloak::KeycloakError;
-use crate::security::keycloak::validator::validate_token_and_extract_claims;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::client::KeycloakClient;
+use crate::middleware::security::keycloak::KeycloakError;
+use crate::middleware::security::keycloak::validator::validate_token_and_extract_claims;
 
 #[derive(Clone)]
 pub struct KeycloakService {

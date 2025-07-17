@@ -3,8 +3,8 @@ use axum::{Extension, Json};
 use axum::http::StatusCode;
 use uuid::Uuid;
 use crate::dto::user::user_response::UserResponse;
+use crate::middleware::security::keycloak::extractor::Claims;
 use crate::require_role;
-use crate::security::keycloak::extractor::Claims;
 use crate::services::user_service::UserService;
 
 pub async fn get_user_info(

@@ -1,7 +1,7 @@
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use crate::security::keycloak::claims::KeycloakClaims;
-use crate::security::keycloak::jwk::get_cached_jwks;
-use crate::security::keycloak::KeycloakError;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::jwk::get_cached_jwks;
+use crate::middleware::security::keycloak::KeycloakError;
 
 pub async fn validate_token_and_extract_claims(token: &str) -> Result<KeycloakClaims, KeycloakError> {
     let header = decode_header(token)

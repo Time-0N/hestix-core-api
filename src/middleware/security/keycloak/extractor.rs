@@ -3,8 +3,8 @@ use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum_extra::TypedHeader;
 use axum_extra::headers::{authorization::Bearer, Authorization};
-use crate::security::keycloak::claims::KeycloakClaims;
-use crate::security::keycloak::validator::validate_token_and_extract_claims;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::validator::validate_token_and_extract_claims;
 
 pub struct Claims(pub KeycloakClaims);
 

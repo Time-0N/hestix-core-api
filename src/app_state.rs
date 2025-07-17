@@ -6,12 +6,12 @@ use uuid::Uuid;
 use crate::config::Config;
 use crate::models::user::UserEntity;
 use crate::repositories::user_repository::{PgUserRepo, UserRepository};
-use crate::security::keycloak::client::KeycloakClient;
-use crate::security::keycloak::config::KeycloakConfig;
 use crate::services::auth_service::AuthService;
 use crate::services::user_service::UserService;
 use crate::services::keycloak_service::KeycloakService;
 use crate::cache::user_resolver::UserResolver;
+use crate::middleware::security::keycloak::client::KeycloakClient;
+use crate::middleware::security::keycloak::config::KeycloakConfig;
 
 #[derive(Clone)]
 pub struct AppState {

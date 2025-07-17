@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    security::keycloak::extractor::Claims,
 };
+use crate::middleware::security::keycloak::extractor::Claims;
 use crate::models::user::UserEntity;
 
 pub struct CurrentUser(pub Arc<UserEntity>);

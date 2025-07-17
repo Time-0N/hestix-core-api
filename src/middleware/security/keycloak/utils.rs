@@ -1,4 +1,4 @@
-use crate::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
 
 pub fn has_roles(claims: &KeycloakClaims, role: &str) -> bool {
     claims

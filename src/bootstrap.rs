@@ -11,6 +11,7 @@ use tokio::signal;
 
 use crate::config::Config;
 use crate::app_state::AppState;
+use crate::middleware::security::security::{cors_layer, security_headers_layer};
 use crate::routes::create_router;
 
 async fn shutdown_signal() {
@@ -38,16 +39,19 @@ pub async fn run() -> anyhow::Result<()> {
         .context("connecting to database")?;
 
     let state = AppState::new(cfg.clone(), pool.clone());
-    
+
     // Start user sync task
     tokio::spawn({
         let state = state.clone();
-        async move { 
+        async move {
             crate::tasks::user_sync::user_sync_loop(state).await;
         }
     });
-    
-    let app = create_router(state).layer(TraceLayer::new_for_http());
+
+    let app = create_router(state)
+        .layer(cors_layer())
+        .layer(security_headers_layer())
+        .layer(TraceLayer::new_for_http());
 
     let addr = {
         let host = "127.0.0.1";

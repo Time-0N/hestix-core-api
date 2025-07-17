@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use serde::Serialize;
 use uuid::Uuid;
-use crate::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
 use crate::models::user::UserEntity;
 
 #[derive(Serialize)]

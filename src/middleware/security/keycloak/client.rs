@@ -1,8 +1,8 @@
 use crate::dto::auth::token_response::TokenResponse;
 use crate::dto::keycloak::keycloak_user::KeycloakUser;
-use crate::security::keycloak::config::KeycloakConfig;
-use crate::security::keycloak::KeycloakError;
 use reqwest::Client;
+use crate::middleware::security::keycloak::config::KeycloakConfig;
+use crate::middleware::security::keycloak::KeycloakError;
 
 #[derive(Clone)]
 pub struct KeycloakClient {

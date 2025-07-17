@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use crate::dto::auth::token_response::TokenResponse;
-use crate::security::keycloak::KeycloakError;
+use crate::middleware::security::keycloak::KeycloakError;
 use crate::services::keycloak_service::KeycloakService;
 use crate::services::user_service::UserService;
 

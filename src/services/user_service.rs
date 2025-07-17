@@ -6,9 +6,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 use crate::cache::user_resolver::UserResolver;
 use crate::dto::keycloak::keycloak_user::KeycloakUser;
+use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::middleware::security::keycloak::KeycloakError;
 use crate::models::user::UserEntity;
-use crate::security::keycloak::claims::KeycloakClaims;
-use crate::security::keycloak::KeycloakError;
 use crate::services::keycloak_service::KeycloakService;
 
 #[derive(Clone)]
