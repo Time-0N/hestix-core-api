@@ -10,10 +10,11 @@
 # - KEYCLOAK_REDIRECT_URI
 
 # Build Stage
-FROM rust:1.77 AS builder
+FROM rustlang/rust:nightly-slim as builder
 LABEL authors="Time_ON"
 
 WORKDIR /app
+
 COPY . .
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
@@ -21,9 +22,9 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev
 RUN cargo build --release
 
 # Runtime Stage
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
