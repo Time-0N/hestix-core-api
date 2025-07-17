@@ -16,9 +16,13 @@ pub trait UserRepository: Send + Sync {
     /// Insert a new cache record.
     async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
 
+    async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
+
     async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), sqlx::Error>;
 
     async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error>;
+
+    async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error>;
 }
 
 /// Postgres implementation of `UserRepo`.
@@ -71,6 +75,26 @@ impl UserRepository for PgUserRepo {
         Ok(())
     }
 
+    async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+        r#"
+        UPDATE users
+        SET username = $1,
+            email = $2,
+            updated_at = $3
+        WHERE keycloak_id = $4
+        "#,
+        user.username,
+        user.email,
+        user.updated_at,
+        user.keycloak_id
+    )
+            .execute(self.pool.as_ref())
+            .await?;
+
+        Ok(())
+    }
+
     async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), Error> {
         sqlx::query!(
             r#"
@@ -90,5 +114,15 @@ impl UserRepository for PgUserRepo {
             .await?;
 
         Ok(rows.into_iter().map(|row| row.keycloak_id).collect())
+    }
+
+    async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+        UserEntity,
+        "SELECT * FROM users"
+    )
+            .fetch_all(self.pool.as_ref())
+            .await?;
+        Ok(rows)
     }
 }

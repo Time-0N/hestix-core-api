@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use moka::future::Cache;
 use uuid::Uuid;
@@ -14,7 +15,7 @@ impl UserResolver {
         Self { user_repository, cache }
     }
 
-    pub async fn resolver_by_keycloak_id(
+    pub async fn find_and_cache_user_by_keycloak_id(
         &self,
         keycloak_id: Uuid,
     ) -> Result<Option<Arc<UserEntity>>, sqlx::Error> {
@@ -51,7 +52,15 @@ impl UserResolver {
         self.user_repository.delete_by_keycloak_id(keycloak_id).await
     }
 
-    pub async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error> {
-        self.user_repository.get_all_user_ids().await
+    pub async fn get_all_users_mapped_to_id(&self) -> Result<HashMap<Uuid, Arc<UserEntity>>, sqlx::Error> {
+        let users = self.user_repository.get_all_users().await?;
+        Ok(users.into_iter().map(|u| (u.keycloak_id, Arc::new(u))).collect())
     }
+
+    pub async fn update_and_cache_user(&self, user: UserEntity) -> Result<(), sqlx::Error> {
+        self.user_repository.update_user(&user).await?;
+        self.cache.insert(user.keycloak_id, Arc::new(user)).await;
+        Ok(())
+    }
+
 }

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use anyhow::Context;
 use sqlx::{Error};
@@ -23,7 +23,7 @@ impl UserService {
     }
 
     pub async fn get_user_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<Option<Arc<UserEntity>>, Error> {
-        self.user_resolver.resolver_by_keycloak_id(keycloak_id).await
+        self.user_resolver.find_and_cache_user_by_keycloak_id(keycloak_id).await
     }
 
     pub async fn sync_user_from_keycloak_claims(
@@ -46,7 +46,7 @@ impl UserService {
 
         let existing_user = self
             .user_resolver
-            .resolver_by_keycloak_id(keycloak_id)
+            .find_and_cache_user_by_keycloak_id(keycloak_id)
             .await
             .map_err(|e| KeycloakError::Other(format!("User resolver failed: {}", e)))?;
 
@@ -71,40 +71,78 @@ impl UserService {
     }
 
     pub async fn sync_users(&self) -> anyhow::Result<()> {
-        let local_user_ids: HashSet<Uuid> = self
+        let local_users: HashMap<Uuid, Arc<UserEntity>> = self
             .user_resolver
-            .get_all_user_ids()
+            .get_all_users_mapped_to_id()
             .await?
             .into_iter()
             .collect();
 
+        // 2. Fetch all users from Keycloak
         let remote_users: Vec<KeycloakUser> = self
             .keycloak_service
             .fetch_all_users()
             .await
             .context("Failed to fetch users from Keycloak")?;
-        
-        let remote_user_ids: HashSet<Uuid> = remote_users
-            .into_iter()
-            .map(|user| user.id)
-            .collect();
-        
+
+        let remote_user_ids: HashSet<Uuid> = remote_users.iter().map(|u| u.id).collect();
+        let local_user_ids: HashSet<Uuid> = local_users.keys().copied().collect();
+
+        let mut deleted_count = 0;
+        let mut updated_count = 0;
+
+        // 3. Delete orphaned local users
         for orphan_id in local_user_ids.difference(&remote_user_ids) {
             self.user_resolver
                 .remove_user_from_cache_and_db(*orphan_id)
                 .await
                 .with_context(|| format!("Failed to delete orphaned user: {}", orphan_id))?;
-            
-            tracing::info!("Deleted orphaned user: {}", orphan_id);
+
+            tracing::info!("🗑️ Deleted orphaned user: {}", orphan_id);
+            deleted_count += 1;
         }
-        
+
+        // 4. Update users if changed
+        for remote_user in remote_users {
+            if let Some(local_user) = local_users.get(&remote_user.id) {
+                let mut needs_update = false;
+
+                let new_username = remote_user.username.clone().unwrap_or_default();
+                let new_email = remote_user.email.clone().unwrap_or_default();
+
+                if local_user.username != new_username || local_user.email != new_email {
+                    needs_update = true;
+                }
+
+                if needs_update {
+                    let updated_user = UserEntity {
+                        id: local_user.id,
+                        keycloak_id: local_user.keycloak_id,
+                        username: new_username,
+                        email: new_email,
+                        created_at: local_user.created_at,
+                        updated_at: OffsetDateTime::now_utc(),
+                    };
+
+                    self.user_resolver
+                        .update_and_cache_user(updated_user)
+                        .await
+                        .with_context(|| format!("Failed to update user {}", local_user.keycloak_id))?;
+
+                    tracing::info!("Updated user: {}", local_user.keycloak_id);
+                    updated_count += 1;
+                }
+            }
+        }
+
         tracing::info!(
-            "User sync complete - Local: {}, Remote: {}, Deleted: {}",
-            local_user_ids.len(),
-            remote_user_ids.len(),
-            local_user_ids.difference(&remote_user_ids).count()
-        );
-        
+        "User sync complete — Local: {}, Remote: {}, Deleted: {}, Updated: {}",
+        local_user_ids.len(),
+        remote_user_ids.len(),
+        deleted_count,
+        updated_count
+    );
+
         Ok(())
     }
 
