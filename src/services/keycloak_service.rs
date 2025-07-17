@@ -14,9 +14,9 @@ impl KeycloakService {
     pub fn new(client: KeycloakClient) -> Self {
         Self { client }
     }
-    
-    pub async fn fetch_user_token(&self, username: &str, password: &str) -> Result<TokenResponse, KeycloakError> {
-        self.client.fetch_user_token(username, password).await
+
+    pub async fn exchange_code_for_token(&self, code: &str, code_verifier: &str) -> Result<TokenResponse, KeycloakError> {
+        self.client.exchange_code_for_token(code, code_verifier).await
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<KeycloakClaims, KeycloakError> {

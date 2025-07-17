@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use crate::dto::auth::login_request::LoginRequest;
 use crate::dto::auth::token_response::TokenResponse;
 use crate::security::keycloak::KeycloakError;
 use crate::services::keycloak_service::KeycloakService;
@@ -16,17 +15,17 @@ impl AuthService {
         Self { keycloak_service, user_service }
     }
 
-    pub async fn login_user(&self, request: LoginRequest) -> Result<TokenResponse, KeycloakError> {
+    pub async fn exchange_code_for_token(&self, code: String, code_verifier: String) -> Result<TokenResponse, KeycloakError> {
         let token = self.keycloak_service
-            .fetch_user_token(&request.username, &request.password)
+            .exchange_code_for_token(&code, &code_verifier)
             .await?;
 
         let claims = self.keycloak_service
             .validate_token(&token.access_token)
             .await?;
-
+        
         self.user_service.sync_user_from_keycloak_claims(&claims).await?;
-
+        
         Ok(token)
     }
 

@@ -1,5 +1,4 @@
 use crate::dto::auth::token_response::TokenResponse;
-use crate::dto::keycloak::keycloak_user_create::KeycloakUserCreate;
 use crate::dto::keycloak::keycloak_user::KeycloakUser;
 use crate::security::keycloak::config::KeycloakConfig;
 use crate::security::keycloak::KeycloakError;
@@ -40,65 +39,26 @@ impl KeycloakClient {
         Ok(token_response.access_token)
     }
 
-    pub async fn fetch_user_token(&self, username: &str, password: &str) -> Result<TokenResponse, KeycloakError> {
-        let url = format!(
-            "{}/realms/{}/protocol/openid-connect/token",
-            self.config.base_url, self.config.realm
-        );
+    pub async fn exchange_code_for_token(&self, code: &str, code_verifier: &str,) -> Result<TokenResponse, KeycloakError> {
+        let url = format!("{}/realms/{}/protocol/openid-connect/token", self.config.base_url, self.config.realm);
 
         let res = self.client
-            .post(&url)
+            .post(url)
             .form(&[
-                ("grant_type", "password"),
+                ("grant_type", "authorization_code"),
+                ("code", code),
+                ("redirect_uri", &self.config.redirect_uri),
                 ("client_id", &self.config.client_id),
                 ("client_secret", &self.config.client_secret),
-                ("username", username),
-                ("password", password),
+                ("code_verifier", code_verifier)
             ])
             .send()
             .await?
             .error_for_status()?;
 
-        let token_response: TokenResponse = res.json().await.map_err(|_| KeycloakError::MissingToken)?;
-        Ok(token_response)
+        let token: TokenResponse = res.json().await.map_err(|_| KeycloakError::MissingToken)?;
+        Ok(token)
     }
-
-    pub async fn create_user(
-        &self,
-        user: &KeycloakUserCreate,
-        token: &str
-    ) -> Result<String, KeycloakError> {
-        let url = format!(
-            "{}/admin/realms/{}/users",
-            self.config.base_url, self.config.realm
-        );
-
-        let res = self.client
-            .post(url)
-            .bearer_auth(token)
-            .json(user)
-            .send()
-            .await?;
-
-        match res.status().as_u16() {
-            201 => {
-                if let Some(location) = res.headers().get("Location") {
-                    let location_str = location.to_str().unwrap_or_default();
-                    if let Some(id) = location_str.rsplit('/').next() {
-                        return Ok(id.to_string());
-                    }
-                }
-                Err(KeycloakError::MissingUserId)
-            }
-            409 => Err(KeycloakError::UserAlreadyExists),
-            401 => Err(KeycloakError::Unauthorized),
-            _ => {
-                let text = res.text().await.unwrap_or_else(|_| "Unknown".into());
-                Err(KeycloakError::UnexpectedResponse(text))
-            }
-        }
-    }
-
     pub async fn fetch_all_users(&self) -> Result<Vec<KeycloakUser>, KeycloakError> {
         let admin_token = self.fetch_admin_token().await?;
         let mut all_users = Vec::new();

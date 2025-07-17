@@ -1,2 +1,2 @@
 pub mod token_response;
-pub mod login_request;
+pub mod auth_callback_request;

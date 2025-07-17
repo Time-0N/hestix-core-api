@@ -14,6 +14,7 @@ pub struct Config {
     pub keycloak_realm: String,
     pub keycloak_client_id: String,
     pub keycloak_client_secret: String,
+    pub keycloak_redirect_uri: String,
 }
 
 impl Config {
@@ -34,6 +35,8 @@ impl Config {
             .context("KEYCLOAK_CLIENT_ID must be set")?;
         let keycloak_client_secret = env::var("KEYCLOAK_CLIENT_SECRET")
             .context("KEYCLOAK_CLIENT_SECRET must be set")?;
+        let keycloak_redirect_uri = env::var("KEYCLOAK_REDIRECT_URI")
+            .context("KEYCLOAK_REDIRECT_URI must be set")?;
 
         let db_max_connections = env::var("DB_MAX_CONNECTIONS")
             .unwrap_or_else(|_| "5".to_string())
@@ -51,6 +54,7 @@ impl Config {
             keycloak_realm,
             keycloak_client_id,
             keycloak_client_secret,
+            keycloak_redirect_uri,
         })
     }
 }

@@ -50,6 +50,7 @@ The **Hestix Core API** is the central backend for the Hestix ecosystem. It hand
    KEYCLOAK_REALM=myrealm
    KEYCLOAK_CLIENT_ID=core-api
    KEYCLOAK_CLIENT_SECRET=supersecret
+   KEYCLOAK_REDIRECT_URI=http://localhost:0069
    ```
 
 2. **Run migrations:**

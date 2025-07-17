@@ -36,6 +36,7 @@ impl AppState {
             realm:         cfg.keycloak_realm,
             client_id:     cfg.keycloak_client_id,
             client_secret: cfg.keycloak_client_secret,
+            redirect_uri:  cfg.keycloak_redirect_uri,
         };
 
         let user_repository: Arc<dyn UserRepository> = Arc::new(PgUserRepo::new(db.clone()));
