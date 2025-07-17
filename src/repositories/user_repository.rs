@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use sqlx::PgPool;
+use sqlx::{Error, PgPool};
 use uuid::Uuid;
 use crate::models::user::UserEntity;
 
@@ -15,6 +15,10 @@ pub trait UserRepository: Send + Sync {
 
     /// Insert a new cache record.
     async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
+
+    async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), sqlx::Error>;
+
+    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error>;
 }
 
 /// Postgres implementation of `UserRepo`.
@@ -65,5 +69,26 @@ impl UserRepository for PgUserRepo {
             .execute(&*self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+            DELETE FROM users
+            WHERE keycloak_id = $1
+            "#,
+            keycloak_id
+        )
+            .execute(&*self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error> {
+        let rows = sqlx::query!("SELECT keycloak_id FROM users")
+            .fetch_all(self.pool.as_ref())
+            .await?;
+
+        Ok(rows.into_iter().map(|row| row.keycloak_id).collect())
     }
 }

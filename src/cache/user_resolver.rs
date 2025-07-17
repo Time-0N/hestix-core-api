@@ -45,4 +45,13 @@ impl UserResolver {
         self.cache.insert(arc_user.keycloak_id, arc_user).await;
         Ok(())
     }
+
+    pub async fn remove_user_from_cache_and_db(&self, keycloak_id: Uuid) -> Result<(), sqlx::Error> {
+        self.cache.invalidate(&keycloak_id).await;
+        self.user_repository.delete_by_keycloak_id(keycloak_id).await
+    }
+
+    pub async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error> {
+        self.user_repository.get_all_user_ids().await
+    }
 }

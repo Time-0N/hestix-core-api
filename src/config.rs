@@ -10,7 +10,7 @@ pub struct Config {
     pub port: u16,
     pub log_filter: String,
 
-    pub keycloak_url: String,
+    pub keycloak_base_url: String,
     pub keycloak_realm: String,
     pub keycloak_client_id: String,
     pub keycloak_client_secret: String,
@@ -47,7 +47,7 @@ impl Config {
             db_max_connections,
             port,
             log_filter,
-            keycloak_url: keycloak_base_url,
+            keycloak_base_url,
             keycloak_realm,
             keycloak_client_id,
             keycloak_client_secret,

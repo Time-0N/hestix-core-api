@@ -34,7 +34,7 @@ The **Hestix Core API** is the central backend for the Hestix ecosystem. It hand
     ├── repositories/         # trait + Postgres impl for data access  
     ├── services/             # business logic (AuthService, UserService, KeycloakService)  
     ├── security/             # Keycloak client, JWT extractors & validators  
-    └── user/                 # e.g. `resolver.rs` for cache + repo lookup  
+    └── cache/                 # e.g. `resolver.rs` for cache + repo lookup  
 ```
 
 ## 🚀 Running Locally

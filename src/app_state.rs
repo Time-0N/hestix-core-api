@@ -11,7 +11,7 @@ use crate::security::keycloak::config::KeycloakConfig;
 use crate::services::auth_service::AuthService;
 use crate::services::user_service::UserService;
 use crate::services::keycloak_service::KeycloakService;
-use crate::cache::resolver::UserResolver;
+use crate::cache::user_resolver::UserResolver;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,7 +32,7 @@ impl AppState {
             .build();
 
         let kc_cfg = KeycloakConfig {
-            base_url:      cfg.keycloak_url,
+            base_url:      cfg.keycloak_base_url,
             realm:         cfg.keycloak_realm,
             client_id:     cfg.keycloak_client_id,
             client_secret: cfg.keycloak_client_secret,
@@ -42,13 +42,12 @@ impl AppState {
 
         let user_resolver = Arc::new(UserResolver::new(user_repository.clone(), cache));
 
-        let user_service = Arc::new(UserService::new(user_resolver.clone()));
-
-        // 5) Build the KeycloakService from config
+        // Build the KeycloakService from config
         let keycloak_client = KeycloakClient::new(kc_cfg);
         let keycloak_service = Arc::new(KeycloakService::new(keycloak_client));
 
-        // 6) Build the AuthService using Keycloak + UserService
+        let user_service = Arc::new(UserService::new(user_resolver.clone(), keycloak_service.clone()));
+        
         let auth_service = Arc::new(AuthService::new(keycloak_service, user_service.clone()));
 
         AppState {

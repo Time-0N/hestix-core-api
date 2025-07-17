@@ -1,5 +1,6 @@
 use crate::dto::auth::token_response::TokenResponse;
 use crate::dto::keycloak::keycloak_user_create::KeycloakUserCreate;
+use crate::dto::keycloak::keycloak_user::KeycloakUser;
 use crate::security::keycloak::config::KeycloakConfig;
 use crate::security::keycloak::KeycloakError;
 use reqwest::Client;
@@ -96,6 +97,41 @@ impl KeycloakClient {
                 Err(KeycloakError::UnexpectedResponse(text))
             }
         }
+    }
+
+    pub async fn fetch_all_users(&self) -> Result<Vec<KeycloakUser>, KeycloakError> {
+        let admin_token = self.fetch_admin_token().await?;
+        let mut all_users = Vec::new();
+        let mut first = 0;
+        let max = 100;
+
+        loop {
+            let url = format!(
+                "{}/admin/realms/{}/users?first={}&max={}",
+                self.config.base_url,
+                self.config.realm,
+                first,
+                max
+            );
+
+            let response = self.client
+                .get(&url)
+                .bearer_auth(&admin_token)
+                .send()
+                .await?
+                .error_for_status()?
+                .json::<Vec<KeycloakUser>>()
+                .await?;
+
+            if response.is_empty() {
+                break;
+            }
+
+            all_users.extend(response);
+            first += max;
+        }
+
+        Ok(all_users)
     }
 
     pub async fn check_health(&self) -> bool {

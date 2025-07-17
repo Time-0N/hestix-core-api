@@ -1,4 +1,5 @@
 use crate::dto::auth::token_response::TokenResponse;
+use crate::dto::keycloak::keycloak_user::KeycloakUser;
 use crate::security::keycloak::claims::KeycloakClaims;
 use crate::security::keycloak::client::KeycloakClient;
 use crate::security::keycloak::KeycloakError;
@@ -20,6 +21,10 @@ impl KeycloakService {
 
     pub async fn validate_token(&self, token: &str) -> Result<KeycloakClaims, KeycloakError> {
         validate_token_and_extract_claims(token).await
+    }
+
+    pub async fn fetch_all_users(&self) -> Result<Vec<KeycloakUser>, KeycloakError> {
+        self.client.fetch_all_users().await
     }
     
     pub async fn check_health(&self) -> bool {

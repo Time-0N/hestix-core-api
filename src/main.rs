@@ -11,6 +11,7 @@ mod macros;
 mod cache;
 mod error;
 mod config;
+mod tasks;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
