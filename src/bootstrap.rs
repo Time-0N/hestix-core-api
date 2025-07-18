@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 
 use anyhow::Context;
 use axum::serve;
@@ -21,6 +21,14 @@ async fn shutdown_signal() {
     }
 
     tracing::info!("Shutdown signal received");
+}
+
+fn format_display_addr(addr: &SocketAddr) -> String {
+    if addr.ip().is_loopback() {
+        format!("localhost:{}", addr.port())
+    } else {
+        addr.to_string()
+    }
 }
 
 pub async fn run() -> anyhow::Result<()> {
@@ -53,17 +61,14 @@ pub async fn run() -> anyhow::Result<()> {
         .layer(security_headers_layer())
         .layer(TraceLayer::new_for_http());
 
-    let addr = {
-        let host = "127.0.0.1";
-        format!("{}:{}", host, cfg.port)
-    }
-        .parse::<SocketAddr>()
-        .context("parsing listen address")?;
-    tracing::info!("Listening on {}", addr);
+    let addr: SocketAddr = (cfg.host.as_str(), cfg.port)
+        .to_socket_addrs()?
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Could not resolve address"))?;
 
     let listener = TcpListener::bind(addr).await?;
 
-    tracing::info!("Server listening on http://{}", addr);
+    tracing::info!("Server listening on http://{}", format_display_addr(&addr));
 
     serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

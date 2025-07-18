@@ -7,6 +7,7 @@ use serde::Deserialize;
 pub struct Config {
     pub database_url: String,
     pub db_max_connections: u32,
+    pub host: String,
     pub port: u16,
     pub log_filter: String,
 
@@ -23,6 +24,8 @@ impl Config {
 
         let database_url = env::var("DATABASE_URL")
             .context("DATABASE_URL must be set")?;
+        let host = env::var("HOST")
+            .context("HOST must be set")?;
         let port = env::var("PORT")
             .unwrap_or_else(|_| "3000".into())
             .parse::<u16>()
@@ -48,6 +51,7 @@ impl Config {
         Ok(Config {
             database_url,
             db_max_connections,
+            host,
             port,
             log_filter,
             keycloak_base_url,

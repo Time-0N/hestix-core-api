@@ -43,6 +43,7 @@ The **Hestix Core API** is the central backend for the Hestix ecosystem. It hand
    ```env
    DATABASE_URL=postgres://user:password@localhost/hestix
    DB_MAX_CONNECTIONS=5
+   HOST=localhost
    PORT=3000
    LOG_FILTER=info
 
