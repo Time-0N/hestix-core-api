@@ -3,6 +3,7 @@ use std::time::Duration;
 use moka::future::Cache;
 use sqlx::PgPool;
 use uuid::Uuid;
+use axum::extract::FromRef;
 use crate::config::Config;
 use crate::models::user::UserEntity;
 use crate::repositories::user_repository::{PgUserRepo, UserRepository};
@@ -13,7 +14,7 @@ use crate::cache::user_resolver::UserResolver;
 use crate::middleware::security::keycloak::client::KeycloakClient;
 use crate::middleware::security::keycloak::config::KeycloakConfig;
 
-#[derive(Clone)]
+#[derive(Clone, FromRef)]
 pub struct AppState {
     pub config: Config,
     pub db: Arc<PgPool>,

@@ -1,6 +1,6 @@
 use crate::dto::auth::token_response::TokenResponse;
 use crate::dto::keycloak::keycloak_user::KeycloakUser;
-use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::dto::auth::claims::KeycloakClaims;
 use crate::middleware::security::keycloak::client::KeycloakClient;
 use crate::middleware::security::keycloak::KeycloakError;
 use crate::middleware::security::keycloak::validator::validate_token_and_extract_claims;
@@ -15,8 +15,12 @@ impl KeycloakService {
         Self { client }
     }
 
-    pub async fn exchange_code_for_token(&self, code: &str, code_verifier: &str) -> Result<TokenResponse, KeycloakError> {
-        self.client.exchange_code_for_token(code, code_verifier).await
+    pub async fn exchange_code_for_token(&self, code: &str) -> Result<TokenResponse, KeycloakError> {
+        self.client.exchange_code_for_token(code).await
+    }
+
+    pub async fn refresh_access_token(&self, refresh_token: &str) -> Result<TokenResponse, KeycloakError> {
+        self.client.refresh_access_token(refresh_token).await
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<KeycloakClaims, KeycloakError> {

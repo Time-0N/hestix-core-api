@@ -11,7 +11,7 @@ use tokio::signal;
 
 use crate::config::Config;
 use crate::app_state::AppState;
-use crate::middleware::security::security::{cors_layer, security_headers_layer};
+use crate::middleware::security::security::{apply_security_layers, cors_layer};
 use crate::routes::create_router;
 
 async fn shutdown_signal() {
@@ -56,10 +56,8 @@ pub async fn run() -> anyhow::Result<()> {
         }
     });
 
-    let app = create_router(state)
-        .layer(cors_layer())
-        .layer(security_headers_layer())
-        .layer(TraceLayer::new_for_http());
+    let app = apply_security_layers(create_router())
+        .with_state(state);
 
     let addr: SocketAddr = (cfg.host.as_str(), cfg.port)
         .to_socket_addrs()?

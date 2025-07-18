@@ -39,7 +39,7 @@ impl KeycloakClient {
         Ok(token_response.access_token)
     }
 
-    pub async fn exchange_code_for_token(&self, code: &str, code_verifier: &str,) -> Result<TokenResponse, KeycloakError> {
+    pub async fn exchange_code_for_token(&self, code: &str) -> Result<TokenResponse, KeycloakError> {
         let url = format!("{}/realms/{}/protocol/openid-connect/token", self.config.base_url, self.config.realm);
 
         let res = self.client
@@ -50,7 +50,6 @@ impl KeycloakClient {
                 ("redirect_uri", &self.config.redirect_uri),
                 ("client_id", &self.config.client_id),
                 ("client_secret", &self.config.client_secret),
-                ("code_verifier", code_verifier)
             ])
             .send()
             .await?
@@ -59,6 +58,7 @@ impl KeycloakClient {
         let token: TokenResponse = res.json().await.map_err(|_| KeycloakError::MissingToken)?;
         Ok(token)
     }
+    
     pub async fn fetch_all_users(&self) -> Result<Vec<KeycloakUser>, KeycloakError> {
         let admin_token = self.fetch_admin_token().await?;
         let mut all_users = Vec::new();
@@ -92,6 +92,29 @@ impl KeycloakClient {
         }
 
         Ok(all_users)
+    }
+
+    pub async fn refresh_access_token(&self, refresh_token: &str) -> Result<TokenResponse, KeycloakError> {
+        let url = format!(
+            "{}/realms/{}/protocol/openid-connect/token",
+            self.config.base_url,
+            self.config.realm
+        );
+
+        let res = self.client
+            .post(url)
+            .form(&[
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+                ("client_id", &self.config.client_id),
+                ("client_secret", &self.config.client_secret),
+            ])
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let token: TokenResponse = res.json().await.map_err(|_| KeycloakError::MissingToken)?;
+        Ok(token)
     }
 
     pub async fn check_health(&self) -> bool {

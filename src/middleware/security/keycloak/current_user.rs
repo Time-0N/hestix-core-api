@@ -3,14 +3,13 @@ use axum::{
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
 };
-use futures::future::BoxFuture;
 use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
+    middleware::security::keycloak::extractor::Claims,
+    models::user::UserEntity,
 };
-use crate::middleware::security::keycloak::extractor::Claims;
-use crate::models::user::UserEntity;
 
 pub struct CurrentUser(pub Arc<UserEntity>);
 
@@ -20,31 +19,28 @@ where
 {
     type Rejection = (StatusCode, &'static str);
 
-    fn from_request_parts<'a>(
-        parts: &'a mut Parts,
-        _state: &S,
-    ) -> BoxFuture<'a, Result<Self, Self::Rejection>> {
-        let state = parts.extensions.get::<AppState>().cloned();
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let state = parts
+            .extensions
+            .get::<AppState>()
+            .cloned()
+            .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Missing AppState"))?;
 
-        Box::pin(async move {
-            let state = state.ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Missing AppState"))?;
+        let Claims(claims) = Claims::from_request_parts(parts, &state)
+            .await
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid claims"))?;
 
-            let Claims(claims) = Claims::from_request_parts(parts, &state)
-                .await
-                .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid claims"))?;
+        let sub = claims.sub.as_deref()
+            .ok_or((StatusCode::UNAUTHORIZED, "Missing sub"))?;
 
-            let sub = claims.sub.as_deref()
-                .ok_or((StatusCode::UNAUTHORIZED, "Missing sub"))?;
+        let uuid = Uuid::parse_str(sub)
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid UUID"))?;
 
-            let uuid = Uuid::parse_str(sub)
-                .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid UUID"))?;
+        let user = state.user_service.get_user_by_keycloak_id(uuid)
+            .await
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "DB error"))?
+            .ok_or((StatusCode::NOT_FOUND, "User not found"))?;
 
-            let user = state.user_service.get_user_by_keycloak_id(uuid)
-                .await
-                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "DB error"))?
-                .ok_or((StatusCode::NOT_FOUND, "User not found"))?;
-
-            Ok(CurrentUser(user))
-        })
+        Ok(CurrentUser(user))
     }
 }

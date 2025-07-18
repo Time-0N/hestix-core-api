@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 # Web framework
-axum = "0.8.4"
-axum-extra = { version = "0.10", features = ["typed-header"] }
+axum = { version = "0.8.4", features = ["macros"] }
+axum-extra = { version = "0.10", features = ["typed-header", "cookie"] }
 
 # Async runtime
 tokio = { version = "1.46.1", features = ["full"] }
@@ -45,6 +45,8 @@ moka = { version = "0.12.10", features = ["future"] }
 futures = "0.3.31"
 anyhow = "1.0.98"
 tower-http = { version = "0.6.6", features = ["trace", "cors", "set-header"] }
+cookie = "0.18.1"
+tower = "0.5.2"
 
 # Cargo mirror
 [source.crates-io]

@@ -1,5 +1,5 @@
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use crate::middleware::security::keycloak::claims::KeycloakClaims;
+use crate::dto::auth::claims::KeycloakClaims;
 use crate::middleware::security::keycloak::jwk::get_cached_jwks;
 use crate::middleware::security::keycloak::KeycloakError;
 

@@ -24,9 +24,9 @@ The **Hestix Core API** is the central backend for the Hestix ecosystem. It hand
     ├── main.rs               # tiny entrypoint: calls bootstrap::run()  
     ├── bootstrap.rs          # loads config, builds pool, clients, services, router, and serves  
     ├── config.rs             # typed `.env` parsing (DATABASE_URL, LISTEN_PORT, LOG_FILTER, KEYCLOAK_*)  
-    ├── app_state.rs          # composes cache, repos, services, and Keycloak client into shared state  
+    ├── app_state.rs          # composes cache, repos, services, and Keycloak client into shared _state  
     ├── routes/               # all route definitions & nesting  
-    │   ├── mod.rs            # `pub fn create_router(state: AppState) -> Router`  
+    │   ├── mod.rs            # `pub fn create_router(_state: AppState) -> Router`  
     │   ├── auth_routes.rs    # `/api/auth/*`  
     │   └── user_routes.rs    # `/api/user/*`  
     ├── handlers/             # HTTP handlers (thin, call services)  

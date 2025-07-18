@@ -10,6 +10,7 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub log_filter: String,
+    pub allowed_origin: String,
 
     pub keycloak_base_url: String,
     pub keycloak_realm: String,
@@ -47,6 +48,8 @@ impl Config {
             .context("DB_MAX_CONNECTIONS must be a positive integer")?;
         let log_filter = env::var("LOG_FILTER")
             .unwrap_or_else(|_| "info".to_string());
+        let allowed_origin = env::var("CORS_ALLOWED_ORIGIN")
+            .unwrap_or_else(|_| "info".to_string());
 
         Ok(Config {
             database_url,
@@ -54,6 +57,7 @@ impl Config {
             host,
             port,
             log_filter,
+            allowed_origin,
             keycloak_base_url,
             keycloak_realm,
             keycloak_client_id,
