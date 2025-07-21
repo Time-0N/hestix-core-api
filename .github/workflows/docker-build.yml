@@ -29,3 +29,5 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: t1me0n/hestix-core-api:latest
+          cache-from: type=registry,ref=t1me0n/hestix-core-api:buildcache
+          cache-to: type=registry,ref=t1me0n/hestix-core-api:buildcache,mode=max
