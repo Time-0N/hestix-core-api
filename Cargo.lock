@@ -772,6 +772,7 @@ dependencies = [
  "futures",
  "headers",
  "jsonwebtoken",
+ "log",
  "moka",
  "once_cell",
  "reqwest",

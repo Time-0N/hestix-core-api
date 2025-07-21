@@ -1,5 +1,5 @@
 use std::net::{SocketAddr, ToSocketAddrs};
-
+use std::time::Duration;
 use anyhow::Context;
 use axum::serve;
 use dotenvy::dotenv;
@@ -7,7 +7,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber;
 use tokio::signal;
-
+use tracing::{info, warn};
 use crate::config::Config;
 use crate::app_state::AppState;
 use crate::middleware::security::security::{apply_security_layers};
@@ -19,7 +19,7 @@ async fn shutdown_signal() {
         tracing::error!("Failed to install shutdown signal handler: {}", e);
     }
 
-    tracing::info!("Shutdown signal received");
+    info!("Shutdown signal received");
 }
 
 fn format_display_addr(addr: &SocketAddr) -> String {
@@ -28,6 +28,16 @@ fn format_display_addr(addr: &SocketAddr) -> String {
     } else {
         addr.to_string()
     }
+}
+
+async fn try_connect_to_keycloak(cfg: &Config) -> anyhow::Result<()> {
+    let url = format!(
+        "{}/realms/{}/.well-known/openid-configuration",
+        cfg.keycloak_base_url.trim_end_matches('/'),
+        cfg.keycloak_realm,
+    );
+    let _ = reqwest::get(&url).await?;
+    Ok(())
 }
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
@@ -49,6 +59,19 @@ pub async fn run() -> anyhow::Result<()> {
 
     MIGRATOR.run(&pool).await.context("running migrations")?;
 
+    loop {
+        match try_connect_to_keycloak(&cfg).await {
+            Ok(_) => {
+                info!("Keycloak reachable");
+                break;
+            },
+            Err(_) => {
+                warn!("Keycloak not ready, retry in 2 s …");
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        }
+    }
+
     let state = AppState::new(cfg.clone(), pool.clone());
 
     // Start user sync task
@@ -69,7 +92,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind(addr).await?;
 
-    tracing::info!("Server listening on http://{}", format_display_addr(&addr));
+    info!("Server listening on http://{}", format_display_addr(&addr));
 
     serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

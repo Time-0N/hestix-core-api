@@ -47,6 +47,7 @@ anyhow = "1.0.98"
 tower-http = { version = "0.6.6", features = ["trace", "cors", "set-header"] }
 cookie = "0.18.1"
 tower = "0.5.2"
+log = "0.4.27"
 
 # Cargo mirror
 [source.crates-io]
