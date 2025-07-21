@@ -6,12 +6,11 @@ use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber;
-use tower_http::trace::TraceLayer;
 use tokio::signal;
 
 use crate::config::Config;
 use crate::app_state::AppState;
-use crate::middleware::security::security::{apply_security_layers, cors_layer};
+use crate::middleware::security::security::{apply_security_layers};
 use crate::routes::create_router;
 
 async fn shutdown_signal() {
@@ -31,6 +30,8 @@ fn format_display_addr(addr: &SocketAddr) -> String {
     }
 }
 
+static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
 pub async fn run() -> anyhow::Result<()> {
     dotenv().ok();
 
@@ -45,6 +46,8 @@ pub async fn run() -> anyhow::Result<()> {
         .connect(&cfg.database_url)
         .await
         .context("connecting to database")?;
+
+    MIGRATOR.run(&pool).await.context("running migrations")?;
 
     let state = AppState::new(cfg.clone(), pool.clone());
 

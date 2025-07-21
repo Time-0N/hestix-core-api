@@ -30,6 +30,8 @@ WORKDIR /app
 
 COPY --from=builder /app/target/release/hestix-core-api ./app
 
+COPY --from=builder /app/migrations ./migrations
+
 EXPOSE 3000
 
 CMD ["./app"]
