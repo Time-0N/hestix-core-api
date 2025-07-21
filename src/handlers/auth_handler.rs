@@ -4,8 +4,10 @@ use axum::extract::{Query, State};
 use axum::response::{IntoResponse, Redirect};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use reqwest::StatusCode;
+use serde_json::Value;
 use crate::app_state::AppState;
 use crate::dto::auth::auth_callback_request::AuthCallbackRequest;
+use crate::middleware::security::keycloak::extractor::Claims;
 
 pub async fn oauth_callback_handler(
     Query(query): Query<AuthCallbackRequest>,
@@ -80,4 +82,12 @@ pub async fn logout_handler(mut jar: CookieJar) -> impl IntoResponse {
             .build()
     );
     (jar, Redirect::temporary("/"))
+}
+
+pub async fn me_handler(Claims(claims): Claims) -> Json<Value> {
+    Json(serde_json::json!({
+        "sub": claims.sub,
+        "preferred_username": claims.preferred_username,
+        "email": claims.email
+    }))
 }
