@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use serde::Serialize;
 use uuid::Uuid;
-use crate::dto::auth::claims::KeycloakClaims;
+use crate::oidc::claims::OidcClaims;
 use crate::models::user::UserEntity;
 
 #[derive(Serialize)]
@@ -12,13 +12,13 @@ pub struct UserResponse {
     pub roles: Vec<String>,
 }
 
-impl From<(Arc<UserEntity>, &KeycloakClaims)> for UserResponse {
-    fn from((user, claims): (Arc<UserEntity>, &KeycloakClaims)) -> Self {
+impl From<(Arc<UserEntity>, &OidcClaims)> for UserResponse {
+    fn from((user, claims): (Arc<UserEntity>, &OidcClaims)) -> Self {
         UserResponse {
             id: user.id,
             username: user.username.clone(),
             email: user.email.clone(),
-            roles: claims.realm_access.roles.clone(),
+            roles: claims.roles.clone(),
         }
     }
 }

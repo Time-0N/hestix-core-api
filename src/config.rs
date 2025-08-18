@@ -12,11 +12,12 @@ pub struct Config {
     pub log_filter: String,
     pub allowed_origin: String,
 
-    pub keycloak_base_url: String,
-    pub keycloak_realm: String,
-    pub keycloak_client_id: String,
-    pub keycloak_client_secret: String,
-    pub keycloak_redirect_uri: String,
+    pub issuer_url: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_url: String,
+    pub scopes: String,
+
 }
 
 impl Config {
@@ -31,16 +32,16 @@ impl Config {
             .unwrap_or_else(|_| "3000".into())
             .parse::<u16>()
             .context("PORT must be a valid port number")?;
-        let keycloak_base_url = env::var("KEYCLOAK_BASE_URL")
-            .context("KEYCLOAK_BASE_URL must be set")?;
-        let keycloak_realm = env::var("KEYCLOAK_REALM")
-            .context("KEYCLOAK_REALM must be set")?;
-        let keycloak_client_id = env::var("KEYCLOAK_CLIENT_ID")
-            .context("KEYCLOAK_CLIENT_ID must be set")?;
-        let keycloak_client_secret = env::var("KEYCLOAK_CLIENT_SECRET")
-            .context("KEYCLOAK_CLIENT_SECRET must be set")?;
-        let keycloak_redirect_uri = env::var("KEYCLOAK_REDIRECT_URI")
-            .context("KEYCLOAK_REDIRECT_URI must be set")?;
+        let issuer_url = env::var("OIDC_ISSUER_URL")
+            .context("OIDC_ISSUER_URL must be set")?;
+        let client_id = env::var("OIDC_CLIENT_ID")
+            .context("OIDC_CLIENT_ID must be set")?;
+        let client_secret = env::var("OIDC_CLIENT_SECRET")
+            .context("OIDC_CLIENT_SECRET must be set")?;
+        let redirect_url = env::var("OIDC_REDIRECT_URL")
+            .context("OIDC_REDIRECT_URL must be set")?;
+        let scopes = env::var("OIDC_SCOPES")
+            .context("OIDC_SCOPES must be set")?;
 
         let db_max_connections = env::var("DB_MAX_CONNECTIONS")
             .unwrap_or_else(|_| "5".to_string())
@@ -58,11 +59,11 @@ impl Config {
             port,
             log_filter,
             allowed_origin,
-            keycloak_base_url,
-            keycloak_realm,
-            keycloak_client_id,
-            keycloak_client_secret,
-            keycloak_redirect_uri,
+            issuer_url,
+            client_id,
+            client_secret,
+            redirect_url,
+            scopes,
         })
     }
 }
