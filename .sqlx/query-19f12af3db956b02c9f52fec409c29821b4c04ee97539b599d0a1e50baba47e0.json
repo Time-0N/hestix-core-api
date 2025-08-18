@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM users\n            WHERE idp_issuer = $1 AND idp_subject = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "19f12af3db956b02c9f52fec409c29821b4c04ee97539b599d0a1e50baba47e0"
+}

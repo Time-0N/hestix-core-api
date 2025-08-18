@@ -30,14 +30,23 @@ fn format_display_addr(addr: &SocketAddr) -> String {
     }
 }
 
-async fn try_connect_to_keycloak(cfg: &Config) -> anyhow::Result<()> {
+async fn wait_for_oidc_issuer(cfg: &Config) -> anyhow::Result<()> {
     let url = format!(
-        "{}/realms/{}/.well-known/openid-configuration",
-        cfg.keycloak_base_url.trim_end_matches('/'),
-        cfg.keycloak_realm,
+        "{}/.well-known/openid-configuration",
+        cfg.issuer_url.trim_end_matches('/')
     );
-    let _ = reqwest::get(&url).await?;
-    Ok(())
+    loop {
+        match reqwest::get(&url).await {
+            Ok(resp) if resp.status().is_success() => {
+                info!("OIDC issuer reachable");
+                return Ok(());
+            }
+            _ => {
+                warn!("OIDC issuer not ready, retry in 2 s …");
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        }
+    }
 }
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
@@ -59,20 +68,19 @@ pub async fn run() -> anyhow::Result<()> {
 
     MIGRATOR.run(&pool).await.context("running migrations")?;
 
-    loop {
-        match try_connect_to_keycloak(&cfg).await {
-            Ok(_) => {
-                info!("Keycloak reachable");
-                break;
-            },
-            Err(_) => {
-                warn!("Keycloak not ready, retry in 2 s …");
-                tokio::time::sleep(Duration::from_secs(2)).await;
-            }
-        }
-    }
+    wait_for_oidc_issuer(&cfg).await?;
 
-    let state = AppState::new(cfg.clone(), pool.clone());
+    let provider = std::sync::Arc::new(
+        crate::providers::zitadel::provider::ZitadelProvider::new(
+            &cfg.issuer_url,
+            &cfg.client_id,
+            &cfg.client_secret,
+            &cfg.redirect_url,
+            &cfg.scopes,
+        ).await?
+    );
+
+    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone());
 
     // Start user sync task
     tokio::spawn({

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, keycloak_id, username, email, created_at, updated_at\n            FROM users\n            WHERE keycloak_id = $1\n            ",
+  "query": "\n            SELECT\n                id,\n                idp_issuer,\n                idp_subject,\n                username,\n                email,\n                created_at,\n                updated_at\n            FROM users\n            WHERE idp_issuer = $1 AND idp_subject = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -10,33 +10,39 @@
       },
       {
         "ordinal": 1,
-        "name": "keycloak_id",
-        "type_info": "Uuid"
+        "name": "idp_issuer",
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "username",
+        "name": "idp_subject",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "email",
+        "name": "username",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -45,8 +51,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "b137adecc16de4bcde25a6d83d4029ea4ad307d19132961bd5946a0999d81384"
+  "hash": "aad9516eab3788aeebf24b2874d967744a1f28926f50d3316580394c83cbb1fd"
 }

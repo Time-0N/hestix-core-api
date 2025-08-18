@@ -12,6 +12,8 @@ mod error;
 mod config;
 mod tasks;
 mod middleware;
+mod oidc;
+mod providers;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

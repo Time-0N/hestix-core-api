@@ -2,36 +2,41 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use sqlx::{Error, PgPool};
 use uuid::Uuid;
+
 use crate::models::user::UserEntity;
 
-/// Defines all cache‐related data operations.
+/// Generic user repository using (idp_issuer, idp_subject) instead of keycloak_id.
 #[async_trait]
 pub trait UserRepository: Send + Sync {
-    /// Look up a cache by their Keycloak ID.
-    async fn find_by_keycloak_id(
+    /// Look up a user by (issuer, subject).
+    async fn find_by_subject(
         &self,
-        keycloak_id: Uuid,
+        issuer: &str,
+        subject: &str,
     ) -> Result<Option<UserEntity>, sqlx::Error>;
 
-    /// Insert a new cache record.
+    /// Insert a new user.
     async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
 
+    /// Update username/email (keyed by (issuer, subject)).
     async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
 
-    async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), sqlx::Error>;
+    /// Delete by (issuer, subject).
+    async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), sqlx::Error>;
 
-    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error>;
+    /// Return all identities (issuer, subject) pairs.
+    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, sqlx::Error>;
 
+    /// Return all users (full rows).
     async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error>;
 }
 
-/// Postgres implementation of `UserRepo`.
+/// Postgres implementation of `UserRepository`.
 pub struct PgUserRepo {
     pool: Arc<PgPool>,
 }
 
 impl PgUserRepo {
-    /// Construct a new PgUserRepo backed by the given pool.
     pub fn new(pool: Arc<PgPool>) -> Self {
         Self { pool }
     }
@@ -39,18 +44,27 @@ impl PgUserRepo {
 
 #[async_trait]
 impl UserRepository for PgUserRepo {
-    async fn find_by_keycloak_id(
+    async fn find_by_subject(
         &self,
-        keycloak_id: Uuid,
+        issuer: &str,
+        subject: &str,
     ) -> Result<Option<UserEntity>, sqlx::Error> {
         let rec = sqlx::query_as!(
             UserEntity,
             r#"
-            SELECT id, keycloak_id, username, email, created_at, updated_at
+            SELECT
+                id,
+                idp_issuer,
+                idp_subject,
+                username,
+                email,
+                created_at,
+                updated_at
             FROM users
-            WHERE keycloak_id = $1
+            WHERE idp_issuer = $1 AND idp_subject = $2
             "#,
-            keycloak_id
+            issuer,
+            subject
         )
             .fetch_optional(&*self.pool)
             .await?;
@@ -60,11 +74,12 @@ impl UserRepository for PgUserRepo {
     async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"
-            INSERT INTO users (id, keycloak_id, username, email, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (id, idp_issuer, idp_subject, username, email, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             user.id,
-            user.keycloak_id,
+            user.idp_issuer,
+            user.idp_subject,
             user.username,
             user.email,
             user.created_at,
@@ -77,50 +92,69 @@ impl UserRepository for PgUserRepo {
 
     async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error> {
         sqlx::query!(
-        r#"
-        UPDATE users
-        SET username = $1,
-            email = $2,
-            updated_at = $3
-        WHERE keycloak_id = $4
-        "#,
-        user.username,
-        user.email,
-        user.updated_at,
-        user.keycloak_id
-    )
+            r#"
+            UPDATE users
+            SET username = $1,
+                email    = $2,
+                updated_at = $3
+            WHERE idp_issuer = $4 AND idp_subject = $5
+            "#,
+            user.username,
+            user.email,
+            user.updated_at,
+            user.idp_issuer,
+            user.idp_subject
+        )
             .execute(self.pool.as_ref())
             .await?;
-
         Ok(())
     }
 
-    async fn delete_by_keycloak_id(&self, keycloak_id: Uuid) -> Result<(), Error> {
+    async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), Error> {
         sqlx::query!(
             r#"
             DELETE FROM users
-            WHERE keycloak_id = $1
+            WHERE idp_issuer = $1 AND idp_subject = $2
             "#,
-            keycloak_id
+            issuer,
+            subject
         )
             .execute(&*self.pool)
             .await?;
         Ok(())
     }
 
-    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, sqlx::Error> {
-        let rows = sqlx::query!("SELECT keycloak_id FROM users")
+    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, sqlx::Error> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT idp_issuer, idp_subject
+            FROM users
+            "#
+        )
             .fetch_all(self.pool.as_ref())
             .await?;
 
-        Ok(rows.into_iter().map(|row| row.keycloak_id).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.idp_issuer, r.idp_subject))
+            .collect())
     }
 
     async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error> {
         let rows = sqlx::query_as!(
-        UserEntity,
-        "SELECT * FROM users"
-    )
+            UserEntity,
+            r#"
+            SELECT
+                id,
+                idp_issuer,
+                idp_subject,
+                username,
+                email,
+                created_at,
+                updated_at
+            FROM users
+            "#
+        )
             .fetch_all(self.pool.as_ref())
             .await?;
         Ok(rows)
