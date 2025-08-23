@@ -1,5 +1,4 @@
-use axum::{Router};
-use axum::routing::{get};
+use axum::{routing::{get, post}, Router};
 use crate::app_state::AppState;
 use crate::handlers::auth_handler::{login_handler, logout_handler, me_handler, oauth_callback_handler, refresh_handler};
 

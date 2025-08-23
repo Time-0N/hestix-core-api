@@ -65,6 +65,7 @@ impl OidcProvider for ZitadelProvider {
                 qp.append_pair("code_challenge", ch);
                 qp.append_pair("code_challenge_method", "S256");
             }
+            qp.append_pair("response_mode", "query");
         }
         url.to_string()
     }
