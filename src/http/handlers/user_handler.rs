@@ -2,9 +2,10 @@ use axum::{Json};
 use axum::extract::State;
 use axum::http::StatusCode;
 use crate::app_state::AppState;
-use crate::dto::user::user_response::UserResponse;
+use crate::model::dto::user::user_response::UserResponse;
 use crate::middleware::security::extractor::Claims;
 use crate::require_role;
+use crate::http::errors::server_fail;
 
 pub async fn get_user_info(
     State(state): State<AppState>,
@@ -20,7 +21,7 @@ pub async fn get_user_info(
         .user_service
         .get_user_by_identity(issuer, subject)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(server_fail("get_user_by_identity"))?
         .ok_or((StatusCode::NOT_FOUND, "User not found".into()))?;
 
     let response = UserResponse::from((user, &claims));

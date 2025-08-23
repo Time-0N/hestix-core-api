@@ -1,6 +1,6 @@
-use crate::dto::auth::token_response::TokenResponse;
-use crate::oidc::claims::OidcClaims;
-use crate::oidc::error::OidcError;
+use crate::model::dto::auth::token_response::TokenResponse;
+use crate::util::oidc::claims::OidcClaims;
+use crate::util::oidc::error::OidcError;
 
 #[async_trait::async_trait]
 pub trait OidcProvider: Send + Sync {

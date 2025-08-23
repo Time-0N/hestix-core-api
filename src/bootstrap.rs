@@ -3,15 +3,19 @@ use std::time::Duration;
 use anyhow::Context;
 use axum::serve;
 use dotenvy::dotenv;
+use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber;
 use tokio::signal;
-use tracing::{info, warn};
+use tower_http::trace::{DefaultOnResponse, TraceLayer};
+use tracing::{info, warn, Level};
 use crate::config::Config;
 use crate::app_state::AppState;
-use crate::middleware::security::security::{apply_security_layers};
-use crate::routes::create_router;
+use crate::middleware::security::security_layer::{apply_security_layers};
+use crate::http::routes::create_router;
+use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+use crate::http::client::build_http_client;
 
 async fn shutdown_signal() {
     // Wait for Ctrl+C or SIGINT
@@ -30,13 +34,13 @@ fn format_display_addr(addr: &SocketAddr) -> String {
     }
 }
 
-async fn wait_for_oidc_issuer(cfg: &Config) -> anyhow::Result<()> {
+async fn wait_for_oidc_issuer(http_client: &Client, cfg: &Config) -> anyhow::Result<()> {
     let url = format!(
         "{}/.well-known/openid-configuration",
         cfg.issuer_url.trim_end_matches('/')
     );
     loop {
-        match reqwest::get(&url).await {
+        match http_client.get(url.as_str()).send().await {
             Ok(resp) if resp.status().is_success() => {
                 info!("OIDC issuer reachable");
                 return Ok(());
@@ -49,6 +53,22 @@ async fn wait_for_oidc_issuer(cfg: &Config) -> anyhow::Result<()> {
     }
 }
 
+pub fn init_tracing(cfg_filter: Option<&str>) {
+    let filter = if std::env::var_os("RUST_LOG").is_some() {
+        EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("hestix_core_api=info,tower_http=info"))
+    } else if let Some(s) = cfg_filter.filter(|s| !s.is_empty()) {
+        EnvFilter::new(s.to_string())
+    } else {
+        EnvFilter::new("hestix_core_api=info,tower_http=info")
+    };
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer().compact()) // nice console logs
+        .init();
+}
+
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 pub async fn run() -> anyhow::Result<()> {
@@ -56,9 +76,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let cfg = Config::from_env().context("loading config")?;
 
-    tracing_subscriber::fmt()
-        .with_env_filter(&cfg.log_filter)
-        .init();
+    init_tracing(Some(&cfg.log_filter));
 
     let pool = PgPoolOptions::new()
         .max_connections(cfg.db_max_connections)
@@ -68,10 +86,20 @@ pub async fn run() -> anyhow::Result<()> {
 
     MIGRATOR.run(&pool).await.context("running migrations")?;
 
-    wait_for_oidc_issuer(&cfg).await?;
+    let http_client: Client = build_http_client(
+        &format!("hestix-core/{}", env!("CARGO_PKG_VERSION")),
+        std::env::var("HTTP_ACCEPT_INVALID_CERTS")
+            .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE"))
+            .unwrap_or(false),
+        10,                            // redirects
+        Duration::from_secs(5),        // connect_timeout
+        Duration::from_secs(15),       // request timeout
+    )?;
+
+    wait_for_oidc_issuer(&http_client, &cfg).await?;
 
     let provider = std::sync::Arc::new(
-        crate::providers::zitadel::provider::ZitadelProvider::new(
+        crate::util::oidc::providers::zitadel::provider::ZitadelProvider::new(
             &cfg.issuer_url,
             &cfg.client_id,
             &cfg.client_secret,
@@ -80,17 +108,26 @@ pub async fn run() -> anyhow::Result<()> {
         ).await?
     );
 
-    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone());
+    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client);
 
     // Start user sync task
     tokio::spawn({
         let state = state.clone();
         async move {
-            crate::tasks::user_sync::user_sync_loop(state).await;
+            crate::util::tasks::user_sync::user_sync_loop(state).await;
         }
     });
 
     let app = apply_security_layers(create_router())
+        .layer(
+            TraceLayer::new_for_http()
+                .on_response(
+                    DefaultOnResponse::new()
+                        .level(Level::INFO)
+                        .latency_unit(tower_http::LatencyUnit::Millis)
+                        .include_headers(false)
+                )
+        )
         .with_state(state);
 
     let addr: SocketAddr = (cfg.host.as_str(), cfg.port)

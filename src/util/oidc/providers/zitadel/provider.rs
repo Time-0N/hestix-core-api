@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use reqwest::{Client, Url};
-use crate::oidc::{OidcClaims, OidcError, discovery::OidcDiscovery, jwk::JwkCache, provider::OidcProvider, RoleMapper};
-use crate::dto::auth::token_response::TokenResponse;
+use crate::util::oidc::{OidcClaims, OidcError, discovery::OidcDiscovery, jwk::JwkCache, provider::OidcProvider, RoleMapper};
+use crate::model::dto::auth::token_response::TokenResponse;
 use base64::{engine::general_purpose, Engine as _};
 use serde_json::Value;
-use crate::providers::zitadel::role_mapper::ZitadelRoleMapper;
+use crate::util::oidc::providers::zitadel::role_mapper::ZitadelRoleMapper;
 
 pub struct ZitadelProvider {
-    http: Client,
+    http_client: Client,
     client_id: String,
     client_secret: String,
     redirect_url: String,
@@ -18,18 +18,18 @@ pub struct ZitadelProvider {
 
 impl ZitadelProvider {
     pub async fn new(
+        http_client: Client,
         issuer_url: &str,
         client_id: &str,
         client_secret: &str,
         redirect_url: &str,
         scopes: &str,
     ) -> Result<Self, OidcError> {
-        let http = Client::new();
         let discovery = OidcDiscovery::fetch(issuer_url).await?;
         let jwks = JwkCache::new(&discovery.jwks_uri).await?;
 
         Ok(Self {
-            http,
+            http_client,
             client_id: client_id.to_string(),
             client_secret: client_secret.to_string(),
             redirect_url: redirect_url.to_string(),
@@ -65,6 +65,7 @@ impl OidcProvider for ZitadelProvider {
                 qp.append_pair("code_challenge", ch);
                 qp.append_pair("code_challenge_method", "S256");
             }
+            qp.append_pair("response_mode", "query");
         }
         url.to_string()
     }
@@ -83,7 +84,7 @@ impl OidcProvider for ZitadelProvider {
             form.push(("client_secret".into(), self.client_secret.clone()));
         }
 
-        let resp = self.http
+        let resp = self.http_client
             .post(&self.discovery.token_endpoint)
             .form(&form)
             .send()
@@ -105,7 +106,7 @@ impl OidcProvider for ZitadelProvider {
             form.push(("client_secret".into(), self.client_secret.clone()));
         }
 
-        let resp = self.http
+        let resp = self.http_client
             .post(&self.discovery.token_endpoint)
             .form(&form)
             .send()

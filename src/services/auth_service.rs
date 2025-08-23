@@ -1,9 +1,9 @@
 use std::sync::Arc;
-use crate::dto::auth::token_response::TokenResponse;
+use crate::model::dto::auth::token_response::TokenResponse;
 use crate::services::user_service::UserService;
-use crate::oidc::{OidcClaims};
-use crate::oidc::provider::OidcProvider;
-use crate::oidc::error::OidcError;
+use crate::util::oidc::{OidcClaims};
+use crate::util::oidc::provider::OidcProvider;
+use crate::util::oidc::error::OidcError;
 
 #[derive(Clone)]
 pub struct AuthService {

@@ -3,9 +3,9 @@ use sqlx::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::cache::user_resolver::UserResolver;
-use crate::models::user::UserEntity;
-use crate::oidc::{OidcClaims, OidcError};
+use crate::util::cache::user_resolver::UserResolver;
+use crate::model::user::UserEntity;
+use crate::util::oidc::{OidcClaims, OidcError};
 
 #[derive(Clone)]
 pub struct UserService {

@@ -10,7 +10,7 @@ use axum_extra::{
 };
 
 use crate::app_state::AppState;
-use crate::oidc::OidcClaims;
+use crate::util::oidc::OidcClaims;
 
 pub struct Claims(pub OidcClaims);
 
@@ -24,7 +24,7 @@ where
     fn from_request_parts(
         parts: &mut Parts,
         state: &S,
-    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
         // Get a concrete AppState for provider access
         let app = AppState::from_ref(state);
 
