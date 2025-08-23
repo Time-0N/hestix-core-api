@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use serde::Serialize;
 use uuid::Uuid;
-use crate::oidc::claims::OidcClaims;
-use crate::models::user::UserEntity;
+use crate::util::oidc::claims::OidcClaims;
+use crate::model::user::UserEntity;
 
 #[derive(Serialize)]
 pub struct UserResponse {

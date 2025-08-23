@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use crate::oidc::error::OidcError;
+use crate::util::oidc::error::OidcError;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct OidcDiscovery {
