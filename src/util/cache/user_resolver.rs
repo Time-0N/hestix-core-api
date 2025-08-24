@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use moka::future::Cache;
-use crate::models::user::UserEntity;
+use crate::model::user::UserEntity;
 use crate::repositories::user_repository::UserRepository;
 
 fn id_key(issuer: &str, subject: &str) -> String {

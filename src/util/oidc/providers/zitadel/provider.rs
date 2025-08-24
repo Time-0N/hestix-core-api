@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use reqwest::{Client, Url};
-use crate::oidc::{OidcClaims, OidcError, discovery::OidcDiscovery, jwk::JwkCache, provider::OidcProvider, RoleMapper};
-use crate::dto::auth::token_response::TokenResponse;
+use crate::util::oidc::{OidcClaims, OidcError, discovery::OidcDiscovery, jwk::JwkCache, provider::OidcProvider, RoleMapper};
+use crate::model::dto::auth::token_response::TokenResponse;
 use base64::{engine::general_purpose, Engine as _};
 use serde_json::Value;
-use crate::providers::zitadel::role_mapper::ZitadelRoleMapper;
+use crate::util::oidc::providers::zitadel::role_mapper::ZitadelRoleMapper;
 
 pub struct ZitadelProvider {
     http: Client,
@@ -24,7 +24,12 @@ impl ZitadelProvider {
         redirect_url: &str,
         scopes: &str,
     ) -> Result<Self, OidcError> {
-        let http = Client::new();
+        let http = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .timeout(std::time::Duration::from_secs(15))
+            .build()
+            .map_err(|e| OidcError::Network(e.into()))?;
+        
         let discovery = OidcDiscovery::fetch(issuer_url).await?;
         let jwks = JwkCache::new(&discovery.jwks_uri).await?;
 

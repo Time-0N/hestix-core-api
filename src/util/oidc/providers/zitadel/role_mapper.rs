@@ -1,5 +1,5 @@
 use serde_json::Value;
-use crate::oidc::provider::RoleMapper;
+use crate::util::oidc::provider::RoleMapper;
 
 pub struct ZitadelRoleMapper;
 

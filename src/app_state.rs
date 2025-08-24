@@ -5,12 +5,12 @@ use sqlx::PgPool;
 use axum::extract::FromRef;
 
 use crate::config::Config;
-use crate::models::user::UserEntity;
+use crate::model::user::UserEntity;
 use crate::repositories::user_repository::{PgUserRepo, UserRepository};
 use crate::services::auth_service::AuthService;
 use crate::services::user_service::UserService;
-use crate::cache::user_resolver::UserResolver;
-use crate::oidc::provider::OidcProvider;
+use crate::util::cache::user_resolver::UserResolver;
+use crate::util::oidc::provider::OidcProvider;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {

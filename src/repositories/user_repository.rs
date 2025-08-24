@@ -1,9 +1,8 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use sqlx::{Error, PgPool};
-use uuid::Uuid;
 
-use crate::models::user::UserEntity;
+use crate::model::user::UserEntity;
 
 /// Generic user repository using (idp_issuer, idp_subject) instead of keycloak_id.
 #[async_trait]
@@ -13,22 +12,22 @@ pub trait UserRepository: Send + Sync {
         &self,
         issuer: &str,
         subject: &str,
-    ) -> Result<Option<UserEntity>, sqlx::Error>;
+    ) -> Result<Option<UserEntity>, Error>;
 
     /// Insert a new user.
-    async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
+    async fn insert(&self, user: &UserEntity) -> Result<(), Error>;
 
     /// Update username/email (keyed by (issuer, subject)).
-    async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error>;
+    async fn update_user(&self, user: &UserEntity) -> Result<(), Error>;
 
     /// Delete by (issuer, subject).
-    async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), sqlx::Error>;
+    async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), Error>;
 
     /// Return all identities (issuer, subject) pairs.
-    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, sqlx::Error>;
+    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, Error>;
 
     /// Return all users (full rows).
-    async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error>;
+    async fn get_all_users(&self) -> Result<Vec<UserEntity>, Error>;
 }
 
 /// Postgres implementation of `UserRepository`.
@@ -48,7 +47,7 @@ impl UserRepository for PgUserRepo {
         &self,
         issuer: &str,
         subject: &str,
-    ) -> Result<Option<UserEntity>, sqlx::Error> {
+    ) -> Result<Option<UserEntity>, Error> {
         let rec = sqlx::query_as!(
             UserEntity,
             r#"
@@ -71,7 +70,7 @@ impl UserRepository for PgUserRepo {
         Ok(rec)
     }
 
-    async fn insert(&self, user: &UserEntity) -> Result<(), sqlx::Error> {
+    async fn insert(&self, user: &UserEntity) -> Result<(), Error> {
         sqlx::query!(
             r#"
             INSERT INTO users (id, idp_issuer, idp_subject, username, email, created_at, updated_at)
@@ -90,7 +89,7 @@ impl UserRepository for PgUserRepo {
         Ok(())
     }
 
-    async fn update_user(&self, user: &UserEntity) -> Result<(), sqlx::Error> {
+    async fn update_user(&self, user: &UserEntity) -> Result<(), Error> {
         sqlx::query!(
             r#"
             UPDATE users
@@ -124,7 +123,7 @@ impl UserRepository for PgUserRepo {
         Ok(())
     }
 
-    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, sqlx::Error> {
+    async fn get_all_identities(&self) -> Result<Vec<(String, String)>, Error> {
         let rows = sqlx::query!(
             r#"
             SELECT idp_issuer, idp_subject

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use crate::oidc::error::OidcError;
-use crate::oidc::claims::OidcClaims;
-use crate::oidc::discovery::OidcDiscovery;
+use crate::util::oidc::error::OidcError;
+use crate::util::oidc::claims::OidcClaims;
+use crate::util::oidc::discovery::OidcDiscovery;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use serde::Deserialize;
 

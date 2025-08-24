@@ -1,5 +1,5 @@
-use crate::oidc::OidcError;
-use crate::oidc::provider::{IdpUser, OidcAdminApi};
+use crate::util::oidc::OidcError;
+use crate::util::oidc::provider::{IdpUser, OidcAdminApi};
 use async_trait::async_trait;
 
 pub struct ZitadelAdminApi {
