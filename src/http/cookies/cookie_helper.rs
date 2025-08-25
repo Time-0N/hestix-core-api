@@ -52,14 +52,9 @@ pub fn oauth_state_cookie(state: String) -> Cookie<'static> {
 
 // --- Removal helpers ---
 pub fn remove_cookie(name: &str) -> Cookie<'static> {
-    let mut c = Cookie::build((name.to_owned(), String::new()))
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .secure(cookie_secure())
+    Cookie::build((name.to_owned(), String::new()))
         .path("/")
-        .build();
-    c.set_max_age(Duration::seconds(0));
-    c
+        .build()
 }
 
 pub fn clear_auth_cookies(jar: axum_extra::extract::cookie::CookieJar)

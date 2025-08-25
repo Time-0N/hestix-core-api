@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::util::oidc::providers::zitadel::role_mapper::ZitadelRoleMapper;
 
 pub struct ZitadelProvider {
-    http: Client,
+    http_client: Client,
     client_id: String,
     client_secret: String,
     redirect_url: String,
@@ -18,23 +18,18 @@ pub struct ZitadelProvider {
 
 impl ZitadelProvider {
     pub async fn new(
+        http_client: Client,
         issuer_url: &str,
         client_id: &str,
         client_secret: &str,
         redirect_url: &str,
         scopes: &str,
     ) -> Result<Self, OidcError> {
-        let http = reqwest::Client::builder()
-            .connect_timeout(std::time::Duration::from_secs(5))
-            .timeout(std::time::Duration::from_secs(15))
-            .build()
-            .map_err(|e| OidcError::Network(e.into()))?;
-        
         let discovery = OidcDiscovery::fetch(issuer_url).await?;
         let jwks = JwkCache::new(&discovery.jwks_uri).await?;
 
         Ok(Self {
-            http,
+            http_client,
             client_id: client_id.to_string(),
             client_secret: client_secret.to_string(),
             redirect_url: redirect_url.to_string(),
@@ -89,7 +84,7 @@ impl OidcProvider for ZitadelProvider {
             form.push(("client_secret".into(), self.client_secret.clone()));
         }
 
-        let resp = self.http
+        let resp = self.http_client
             .post(&self.discovery.token_endpoint)
             .form(&form)
             .send()
@@ -111,7 +106,7 @@ impl OidcProvider for ZitadelProvider {
             form.push(("client_secret".into(), self.client_secret.clone()));
         }
 
-        let resp = self.http
+        let resp = self.http_client
             .post(&self.discovery.token_endpoint)
             .form(&form)
             .send()

@@ -23,7 +23,7 @@ pub fn cors_layer() -> CorsLayer {
                 match s.parse::<HeaderValue>() {
                     Ok(hv) => origins.push(hv),
                     Err(e) => {
-                        error!(origin=%s, error=%e, "Invalid CORS origin in env");
+                        error!(origin = %s, error = %e, "Invalid CORS origin in env");
                         // refuse to run with a partly-invalid list to avoid surprises
                         return CorsLayer::new();
                     }
@@ -74,7 +74,7 @@ pub fn security_header_layers() -> Vec<SetResponseHeaderLayer<HeaderValue>> {
         ),
         SetResponseHeaderLayer::if_not_present(
             header::CONTENT_SECURITY_POLICY,
-            HeaderValue::from_static("default-src 'self; frame-ancestors 'none"),
+            HeaderValue::from_static("default-src 'self'; frame-ancestors 'none'"),
         ),
     ]
 }
