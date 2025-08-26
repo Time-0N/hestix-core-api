@@ -1,3 +1,4 @@
+use reqwest::Client;
 use serde::Deserialize;
 use crate::util::oidc::error::OidcError;
 
@@ -14,13 +15,13 @@ pub struct OidcDiscovery {
 }
 
 impl OidcDiscovery {
-    pub async fn fetch(issuer_url: &str) -> Result<Self, OidcError> {
+    pub async fn fetch(http_client: &Client ,issuer_url: &str) -> Result<Self, OidcError> {
         let well_known = if issuer_url.ends_with("/.well-known/openid-configuration") {
             issuer_url.to_string()
         } else {
             format!("{}/.well-known/openid-configuration", issuer_url.trim_end_matches('/'))
         };
-        let resp = reqwest::get(&well_known).await.map_err(OidcError::Network)?;
+        let resp = http_client.get(&well_known).send().await.map_err(OidcError::Network)?;
         let doc = resp.error_for_status().map_err(OidcError::Network)?
             .json::<OidcDiscovery>().await.map_err(OidcError::Network)?;
         Ok(doc)

@@ -3,6 +3,7 @@ use crate::util::oidc::error::OidcError;
 use crate::util::oidc::claims::OidcClaims;
 use crate::util::oidc::discovery::OidcDiscovery;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
+use reqwest::Client;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -36,8 +37,8 @@ pub struct JwkCache {
 }
 
 impl JwkCache {
-    pub async fn new(jwks_uri: &str) -> Result<Self, OidcError> {
-        let resp = reqwest::get(jwks_uri).await.map_err(OidcError::Network)?;
+    pub async fn new(http_client: &Client, jwks_uri: &str) -> Result<Self, OidcError> {
+        let resp = http_client.get(jwks_uri).send().await.map_err(OidcError::Network)?;
         let body = resp.error_for_status().map_err(OidcError::Network)?
             .json::<JwksResponse>().await.map_err(OidcError::Network)?;
 
@@ -52,7 +53,7 @@ impl JwkCache {
         Ok(Self { keys: map })
     }
 
-    pub async fn validate(&self, token: &str, discovery: &OidcDiscovery, expected_aud: Option<&str>) -> Result<OidcClaims, OidcError> {
+    pub fn validate(&self, token: &str, discovery: &OidcDiscovery, expected_aud: Option<&str>) -> Result<OidcClaims, OidcError> {
         let header = decode_header(token).map_err(|e| OidcError::Jwt(e.to_string()))?;
         let kid = header.kid.ok_or_else(|| OidcError::Jwt("missing kid".into()))?;
         let key = self.keys.get(&kid).ok_or_else(|| OidcError::Jwt("kid not found in JWKS".into()))?;
