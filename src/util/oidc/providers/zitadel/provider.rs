@@ -25,8 +25,8 @@ impl ZitadelProvider {
         redirect_url: &str,
         scopes: &str,
     ) -> Result<Self, OidcError> {
-        let discovery = OidcDiscovery::fetch(issuer_url).await?;
-        let jwks = JwkCache::new(&discovery.jwks_uri).await?;
+        let discovery = OidcDiscovery::fetch(&http_client,issuer_url).await?;
+        let jwks = JwkCache::new(&http_client,&discovery.jwks_uri).await?;
 
         Ok(Self {
             http_client,
@@ -122,8 +122,7 @@ impl OidcProvider for ZitadelProvider {
         // 1) Verify signature & standard claims (exp/aud/iss/…)
         let mut claims = self
             .jwks
-            .validate(token, &self.discovery, Some(&self.client_id))
-            .await?;
+            .validate(token, &self.discovery, Some(&self.client_id))?;
 
         // 2) Read provider-specific fields from the *raw* payload
         let raw = decode_jwt_payload(token)?;
@@ -135,6 +134,6 @@ impl OidcProvider for ZitadelProvider {
 
     async fn validate_id_token(&self, id_token: &str) -> Result<OidcClaims, OidcError> {
         // Reuse your JWKS validator but force the audience to client_id
-        self.jwks.validate(id_token, &self.discovery, Some(&self.client_id)).await
+        self.jwks.validate(id_token, &self.discovery, Some(&self.client_id))
     }
 }

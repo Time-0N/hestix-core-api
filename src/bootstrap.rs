@@ -100,6 +100,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let provider = std::sync::Arc::new(
         crate::util::oidc::providers::zitadel::provider::ZitadelProvider::new(
+            http_client.clone(),
             &cfg.issuer_url,
             &cfg.client_id,
             &cfg.client_secret,

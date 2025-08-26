@@ -18,7 +18,7 @@ pub struct AppState {
     pub db: Arc<PgPool>,
     pub auth_service: Arc<AuthService>,
     pub user_service: Arc<UserService>,
-    pub http_client: Arc<reqwest::Client>,
+    pub http_client: Client,
 }
 
 impl AppState {
@@ -31,7 +31,7 @@ impl AppState {
             .max_capacity(10_000)
             .build();
         
-        let http_client = Arc::new(http_client);
+        let http_client = http_client;
 
         let user_repository: Arc<dyn UserRepository> = Arc::new(PgUserRepo::new(db.clone()));
         let user_resolver = Arc::new(UserResolver::new(user_repository.clone(), cache));
