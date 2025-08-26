@@ -1,6 +1,7 @@
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 use anyhow::Context;
+use axum::extract::DefaultBodyLimit;
 use axum::serve;
 use dotenvy::dotenv;
 use reqwest::Client;
@@ -120,6 +121,7 @@ pub async fn run() -> anyhow::Result<()> {
     });
 
     let app = apply_security_layers(create_router())
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(
             TraceLayer::new_for_http()
                 .on_response(
