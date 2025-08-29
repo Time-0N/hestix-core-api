@@ -6,17 +6,23 @@ use uuid::Uuid;
 use crate::util::cache::user_resolver::UserResolver;
 use crate::model::user::UserEntity;
 use crate::util::oidc::{OidcClaims, OidcError};
+use crate::util::oidc::provider::OidcProvider;
 
 #[derive(Clone)]
 pub struct UserService {
     pub user_resolver: Arc<UserResolver>,
-    // optional: admin api later
-    // pub admin_api: Option<Arc<dyn OidcAdminApi + Send + Sync>>,
+    pub oidc_provider: Arc<dyn OidcProvider>,
 }
 
 impl UserService {
-    pub fn new(user_resolver: Arc<UserResolver>, _admin_api: Option<()>) -> Self {
-        Self { user_resolver }
+    pub fn new(
+        user_resolver: Arc<UserResolver>,
+        oidc_provider: Arc<dyn OidcProvider>
+    ) -> Self {
+        Self {
+            user_resolver,
+            oidc_provider
+        }
     }
 
     pub async fn get_user_by_identity(
@@ -40,37 +46,33 @@ impl UserService {
             .or_else(|| claims.email.clone())
             .unwrap_or_else(|| sub.clone());
 
-        let email = claims.email.clone().unwrap_or_default();
+        let email = claims.email.clone()
+            .ok_or_else(|| OidcError::Provider("Email is required".to_string()))?;
 
-        let existing = self
-            .get_user_by_identity(issuer, sub)
+        self.user_resolver
+            .upsert_and_cache_user(issuer, sub, &username, &email)
             .await
-            .map_err(|e| OidcError::Provider(format!("User resolver failed: {}", e)))?;
-
-        if existing.is_none() {
-            let now = OffsetDateTime::now_utc();
-            let new_user = UserEntity {
-                id: Uuid::new_v4(),
-                idp_issuer: issuer.clone(),
-                idp_subject: sub.clone(),
-                username,
-                email,
-                created_at: now,
-                updated_at: now,
-            };
-
-            self.user_resolver
-                .insert_and_cache_user(new_user)
-                .await
-                .map_err(|e| OidcError::Provider(format!("User insert failed: {}", e)))?;
-        }
+            .map_err(|e| OidcError::Provider(format!("User upsert failed: {}", e)))?;
 
         Ok(())
     }
 
     // Optional: full sync if you later add admin API support for Zitadel
     pub async fn sync_users(&self) -> anyhow::Result<()> {
-        // placeholder: no-op until admin API implemented
+        tracing::info!("Starting user sync from ZITADEL");
+
+        // For ZITADEL, you'll need to implement the admin API
+        // For now, let's at least refresh the cache with DB users
+        self.user_resolver.refresh_cache().await?;
+
+        // TODO: When you implement ZITADEL admin API:
+        // 1. Fetch all users from ZITADEL via Management API
+        // 2. For each user, upsert into database
+        // 3. Remove users that no longer exist in ZITADEL
+
+        tracing::info!("User sync completed - cache refreshed with {} users",
+            self.user_resolver.cache.entry_count());
+
         Ok(())
     }
 }

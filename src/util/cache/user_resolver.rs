@@ -38,11 +38,18 @@ impl UserResolver {
         Ok(None)
     }
 
-    pub async fn insert_and_cache_user(&self, new_user: UserEntity) -> Result<(), sqlx::Error> {
-        self.user_repository.insert(&new_user).await?;
-        let key = id_key(&new_user.idp_issuer, &new_user.idp_subject);
-        self.cache.insert(key, Arc::new(new_user)).await;
-        Ok(())
+    pub async fn upsert_and_cache_user(
+        &self,
+        issuer: &str,
+        subject: &str,
+        username: &str,
+        email: &str
+    ) -> Result<Arc<UserEntity>, sqlx::Error> {
+        let user = self.user_repository.upsert_user(issuer, subject, username, email).await?;
+        let key = id_key(&user.idp_issuer, &user.idp_subject);
+        let arc_user = Arc::new(user);
+        self.cache.insert(key, arc_user.clone()).await;
+        Ok(arc_user)
     }
 
     pub async fn remove_user_from_cache_and_db(&self, issuer: &str, subject: &str) -> Result<(), sqlx::Error> {
@@ -58,10 +65,12 @@ impl UserResolver {
             .collect())
     }
 
-    pub async fn update_and_cache_user(&self, user: UserEntity) -> Result<(), sqlx::Error> {
-        self.user_repository.update_user(&user).await?;
-        let key = id_key(&user.idp_issuer, &user.idp_subject);
-        self.cache.insert(key, Arc::new(user)).await;
+    pub async fn refresh_cache(&self) -> Result<(), sqlx::Error> {
+        self.cache.invalidate_all();
+        let users = self.get_all_users_mapped_to_key().await?;
+        for (key, user) in users {
+            self.cache.insert(key, user).await;
+        }
         Ok(())
     }
 }

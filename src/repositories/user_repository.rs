@@ -1,36 +1,32 @@
+// In repositories/user_repository.rs
 use std::sync::Arc;
 use async_trait::async_trait;
 use sqlx::{Error, PgPool};
-
+use uuid::Uuid;
 use crate::model::user::UserEntity;
 
-/// Generic user repository using (idp_issuer, idp_subject) instead of keycloak_id.
 #[async_trait]
 pub trait UserRepository: Send + Sync {
-    /// Look up a user by (issuer, subject).
     async fn find_by_subject(
         &self,
         issuer: &str,
         subject: &str,
     ) -> Result<Option<UserEntity>, Error>;
 
-    /// Insert a new user.
-    async fn insert(&self, user: &UserEntity) -> Result<(), Error>;
+    /// Upsert a user - insert or update based on (issuer, subject)
+    async fn upsert_user(
+        &self,
+        issuer: &str,
+        subject: &str,
+        username: &str,
+        email: &str  // NOT optional since ZITADEL enforces it
+    ) -> Result<UserEntity, Error>;
 
-    /// Update username/email (keyed by (issuer, subject)).
-    async fn update_user(&self, user: &UserEntity) -> Result<(), Error>;
-
-    /// Delete by (issuer, subject).
     async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), Error>;
-
-    /// Return all identities (issuer, subject) pairs.
     async fn get_all_identities(&self) -> Result<Vec<(String, String)>, Error>;
-
-    /// Return all users (full rows).
     async fn get_all_users(&self) -> Result<Vec<UserEntity>, Error>;
 }
 
-/// Postgres implementation of `UserRepository`.
 pub struct PgUserRepo {
     pool: Arc<PgPool>,
 }
@@ -48,65 +44,46 @@ impl UserRepository for PgUserRepo {
         issuer: &str,
         subject: &str,
     ) -> Result<Option<UserEntity>, Error> {
-        let rec = sqlx::query_as!(
+        sqlx::query_as!(
             UserEntity,
             r#"
-            SELECT
-                id,
-                idp_issuer,
-                idp_subject,
-                username,
-                email,
-                created_at,
-                updated_at
-            FROM users
+            SELECT * FROM users
             WHERE idp_issuer = $1 AND idp_subject = $2
             "#,
             issuer,
             subject
         )
-            .fetch_optional(&*self.pool)
-            .await?;
-        Ok(rec)
+            .fetch_optional(&*self.pool)  // Use &* like your original
+            .await
     }
 
-    async fn insert(&self, user: &UserEntity) -> Result<(), Error> {
-        sqlx::query!(
+    async fn upsert_user(
+        &self,
+        issuer: &str,
+        subject: &str,
+        username: &str,
+        email: &str
+    ) -> Result<UserEntity, Error> {
+        sqlx::query_as!(
+            UserEntity,
             r#"
-            INSERT INTO users (id, idp_issuer, idp_subject, username, email, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO users (id, idp_issuer, idp_subject, username, email)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (idp_issuer, idp_subject)
+            DO UPDATE SET
+                username = EXCLUDED.username,
+                email = EXCLUDED.email,
+                updated_at = now()
+            RETURNING *
             "#,
-            user.id,
-            user.idp_issuer,
-            user.idp_subject,
-            user.username,
-            user.email,
-            user.created_at,
-            user.updated_at
+            Uuid::new_v4(),
+            issuer,
+            subject,
+            username,
+            email
         )
-            .execute(&*self.pool)
-            .await?;
-        Ok(())
-    }
-
-    async fn update_user(&self, user: &UserEntity) -> Result<(), Error> {
-        sqlx::query!(
-            r#"
-            UPDATE users
-            SET username = $1,
-                email    = $2,
-                updated_at = $3
-            WHERE idp_issuer = $4 AND idp_subject = $5
-            "#,
-            user.username,
-            user.email,
-            user.updated_at,
-            user.idp_issuer,
-            user.idp_subject
-        )
-            .execute(self.pool.as_ref())
-            .await?;
-        Ok(())
+            .fetch_one(&*self.pool)  // Use &* like your original
+            .await
     }
 
     async fn delete_by_subject(&self, issuer: &str, subject: &str) -> Result<(), Error> {
@@ -118,7 +95,7 @@ impl UserRepository for PgUserRepo {
             issuer,
             subject
         )
-            .execute(&*self.pool)
+            .execute(&*self.pool)  // Use &* like your original
             .await?;
         Ok(())
     }
@@ -130,7 +107,7 @@ impl UserRepository for PgUserRepo {
             FROM users
             "#
         )
-            .fetch_all(self.pool.as_ref())
+            .fetch_all(&*self.pool)  // Use &* like your original
             .await?;
 
         Ok(rows
@@ -139,23 +116,14 @@ impl UserRepository for PgUserRepo {
             .collect())
     }
 
-    async fn get_all_users(&self) -> Result<Vec<UserEntity>, sqlx::Error> {
-        let rows = sqlx::query_as!(
+    async fn get_all_users(&self) -> Result<Vec<UserEntity>, Error> {
+        sqlx::query_as!(
             UserEntity,
             r#"
-            SELECT
-                id,
-                idp_issuer,
-                idp_subject,
-                username,
-                email,
-                created_at,
-                updated_at
-            FROM users
+            SELECT * FROM users
             "#
         )
-            .fetch_all(self.pool.as_ref())
-            .await?;
-        Ok(rows)
+            .fetch_all(&*self.pool)  // Use &* like your original
+            .await
     }
 }
