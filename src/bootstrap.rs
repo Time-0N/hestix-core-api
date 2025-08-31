@@ -1,4 +1,5 @@
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 use std::time::Duration;
 use anyhow::Context;
 use axum::extract::DefaultBodyLimit;
@@ -9,6 +10,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber;
 use tokio::signal;
+use tokio::sync::Mutex;
 use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::{info, warn, Level};
 use crate::config::Config;
@@ -17,6 +19,7 @@ use crate::middleware::security::security_layer::{apply_security_layers};
 use crate::http::routes::create_router;
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::http::client::build_http_client;
+use crate::util::oidc::providers::zitadel::management::ZitadelManagementClient;
 
 async fn shutdown_signal() {
     // Wait for Ctrl+C or SIGINT
@@ -110,7 +113,29 @@ pub async fn run() -> anyhow::Result<()> {
         ).await?
     );
 
-    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client);
+    let management_client = if let Some(service_key) = &cfg.zitadel_service_key {
+        match ZitadelManagementClient::new(
+            http_client.clone(),
+            cfg.issuer_url.clone(),
+            service_key
+        ) {
+            Ok(client) => {
+                info!("ZITADEL Management API client initialized");
+                Some(Arc::new(Mutex::new(client)))
+            }
+            Err(e) => {
+                warn!("Failed to initialize ZITADEL Management API: {}", e);
+                warn!("User sync will only refresh from database");
+                None
+            }
+        }
+    } else {
+        info!("ZITADEL Management API not configured - user sync will only refresh from database");
+        None
+    };
+
+
+    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client, management_client.clone());
 
     // Start user sync task
     tokio::spawn({

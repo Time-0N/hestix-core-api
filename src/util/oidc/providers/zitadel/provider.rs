@@ -136,14 +136,4 @@ impl OidcProvider for ZitadelProvider {
         // Reuse your JWKS validator but force the audience to client_id
         self.jwks.validate(id_token, &self.discovery, Some(&self.client_id))
     }
-
-    async fn list_all_users(&self) -> Result<Vec<ZitadelUser>, OidcError> {
-        // This requires:
-        // 1. Machine-to-machine authentication (service account)
-        // 2. Management API permissions
-        // 3. Calling ZITADEL's user.v2.UserService/ListUsers endpoint
-
-        // For now, return empty or not implemented
-        Err(OidcError::Provider("ZITADEL admin API not yet implemented".to_string()))
-    }
 }

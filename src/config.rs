@@ -18,6 +18,8 @@ pub struct Config {
     pub redirect_url: String,
     pub scopes: String,
 
+    pub zitadel_service_key: Option<String>,
+
 }
 
 impl Config {
@@ -52,6 +54,23 @@ impl Config {
         let allowed_origin = env::var("CORS_ALLOWED_ORIGIN")
             .unwrap_or_else(|_| "info".to_string());
 
+        let zitadel_service_key = std::env::var("ZITADEL_SERVICE_KEY_JSON").ok()
+            .or_else(|| {
+                std::env::var("ZITADEL_SERVICE_KEY_PATH").ok()
+                    .and_then(|path| {
+                        match std::fs::read_to_string(&path) {
+                            Ok(content) => {
+                                tracing::info!("Loaded ZITADEL service key from {}", path);
+                                Some(content)
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to load service key from {}: {}", path, e);
+                                None
+                            }
+                        }
+                    })
+            });
+
         Ok(Config {
             database_url,
             db_max_connections,
@@ -64,6 +83,7 @@ impl Config {
             client_secret,
             redirect_url,
             scopes,
+            zitadel_service_key,
         })
     }
 }
