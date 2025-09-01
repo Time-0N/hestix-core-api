@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                idp_issuer,\n                idp_subject,\n                username,\n                email,\n                created_at,\n                updated_at\n            FROM users\n            WHERE idp_issuer = $1 AND idp_subject = $2\n            ",
+  "query": "\n            SELECT * FROM users\n            WHERE idp_issuer = $1 AND idp_subject = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -55,5 +55,5 @@
       false
     ]
   },
-  "hash": "aad9516eab3788aeebf24b2874d967744a1f28926f50d3316580394c83cbb1fd"
+  "hash": "0025cd5a25e4ecc5c5089146c9848828aa0285aeed906ad2b81e6d58a2e578c5"
 }

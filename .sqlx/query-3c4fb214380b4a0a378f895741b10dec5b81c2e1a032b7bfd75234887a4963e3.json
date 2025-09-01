@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                idp_issuer,\n                idp_subject,\n                username,\n                email,\n                created_at,\n                updated_at\n            FROM users\n            ",
+  "query": "\n            SELECT * FROM users\n            ",
   "describe": {
     "columns": [
       {
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "9d71d47d4a1a522b50d3812554640ee716dce9d1396885e1dd345d2cddfa655b"
+  "hash": "3c4fb214380b4a0a378f895741b10dec5b81c2e1a032b7bfd75234887a4963e3"
 }
