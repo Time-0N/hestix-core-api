@@ -91,7 +91,7 @@ impl OidcProvider for ZitadelProvider {
     }
 
     async fn refresh_access_token(&self, refresh_token: &str) -> Result<TokenResponse, OidcError> {
-        let mut form = vec![
+        let form = vec![
             ("grant_type", "refresh_token".to_string()),
             ("refresh_token", refresh_token.to_string()),
             ("client_id", self.client_id.clone()),
