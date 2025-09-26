@@ -13,13 +13,13 @@ use tokio::signal;
 use tokio::sync::Mutex;
 use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::{info, warn, Level};
-use crate::config::Config;
+use crate::infrastructure::config::Config;
 use crate::app_state::AppState;
-use crate::middleware::security::security_layer::{apply_security_layers};
-use crate::http::routes::create_router;
+use crate::shared::middleware::security::security_layer::{apply_security_layers};
+use crate::infrastructure::web::routes::create_router;
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
-use crate::http::client::build_http_client;
-use crate::util::oidc::providers::zitadel::management::ZitadelManagementClient;
+use crate::infrastructure::web::client::build_http_client;
+use crate::infrastructure::oidc::providers::zitadel::management::ZitadelManagementClient;
 
 async fn shutdown_signal() {
     // Wait for Ctrl+C or SIGINT
@@ -103,11 +103,10 @@ pub async fn run() -> anyhow::Result<()> {
     wait_for_oidc_issuer(&http_client, &cfg).await?;
 
     let provider = std::sync::Arc::new(
-        crate::util::oidc::providers::zitadel::provider::ZitadelProvider::new(
+        crate::infrastructure::oidc::providers::zitadel::provider::ZitadelProvider::new(
             http_client.clone(),
             &cfg.issuer_url,
             &cfg.client_id,
-            &cfg.client_secret,
             &cfg.redirect_url,
             &cfg.scopes,
         ).await?
@@ -135,15 +134,24 @@ pub async fn run() -> anyhow::Result<()> {
     };
 
 
-    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client, management_client.clone());
+    // Cast management client to trait object
+    let management_client_trait: Option<Arc<Mutex<dyn crate::infrastructure::oidc::provider::OidcAdminApi + Send + Sync>>> =
+        management_client.map(|mc| mc as Arc<Mutex<dyn crate::infrastructure::oidc::provider::OidcAdminApi + Send + Sync>>);
 
-    // Start user sync task
-    tokio::spawn({
-        let state = state.clone();
-        async move {
-            crate::util::tasks::user_sync::user_sync_loop(state).await;
-        }
-    });
+    let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client, management_client_trait);
+
+    // Start user sync task only if ZITADEL service key is configured
+    if cfg.zitadel_service_key.is_some() {
+        info!("ZITADEL_SERVICE_KEY configured - starting user sync job");
+        tokio::spawn({
+            let state = state.clone();
+            async move {
+                crate::application::user_sync::user_sync_loop(state).await;
+            }
+        });
+    } else {
+        warn!("ZITADEL_SERVICE_KEY not set, skipping start of user sync job");
+    }
 
     let app = apply_security_layers(create_router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
@@ -165,7 +173,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind(addr).await?;
 
-    info!("Server listening on http://{}", format_display_addr(&addr));
+    info!("Server listening on {}", format_display_addr(&addr));
 
     serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

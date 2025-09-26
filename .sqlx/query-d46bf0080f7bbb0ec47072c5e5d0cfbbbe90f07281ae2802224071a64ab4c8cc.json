@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO users (id, idp_issuer, idp_subject, username, email)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT (idp_issuer, idp_subject)\n            DO UPDATE SET\n                username = EXCLUDED.username,\n                email = EXCLUDED.email,\n                updated_at = now()\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "idp_issuer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "idp_subject",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d46bf0080f7bbb0ec47072c5e5d0cfbbbe90f07281ae2802224071a64ab4c8cc"
+}

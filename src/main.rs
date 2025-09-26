@@ -1,13 +1,13 @@
 mod bootstrap;
-mod services;
 mod app_state;
-mod repositories;
-mod error;
-mod config;
-mod util;
-mod middleware;
-mod http;
-pub mod model;
+
+pub mod domain;
+pub mod application;
+pub mod infrastructure;
+pub mod shared;
+
+// Re-export macros at crate root
+pub use shared::role::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -5,14 +5,15 @@ use sqlx::PgPool;
 use axum::extract::FromRef;
 use reqwest::Client;
 use tokio::sync::Mutex;
-use crate::config::Config;
-use crate::model::user::UserEntity;
-use crate::repositories::user_repository::{PgUserRepo, UserRepository};
-use crate::services::auth_service::AuthService;
-use crate::services::user_service::UserService;
-use crate::util::cache::user_resolver::UserResolver;
-use crate::util::oidc::provider::OidcProvider;
-use crate::util::oidc::providers::zitadel::management::ZitadelManagementClient;
+use crate::infrastructure::config::Config;
+use crate::domain::entities::User;
+use crate::infrastructure::persistence::{PgUserRepo, UserRepository};
+use crate::application::auth_service::AuthService;
+use crate::application::user_service::UserService;
+use crate::shared::user_resolver::UserResolver;
+use crate::infrastructure::oidc::provider::OidcProvider;
+// ZitadelManagementClient import removed - now using trait
+use crate::infrastructure::oidc::provider::OidcAdminApi;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
@@ -24,11 +25,11 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(cfg: Config, pool: PgPool, provider: Arc<dyn OidcProvider + Send + Sync>, http_client: Client, management_client: Option<Arc<Mutex<ZitadelManagementClient>>>) -> Self {
+    pub fn new(cfg: Config, pool: PgPool, provider: Arc<dyn OidcProvider + Send + Sync>, http_client: Client, management_client: Option<Arc<Mutex<dyn OidcAdminApi + Send + Sync>>>) -> Self {
         let config = cfg.clone();
         let db = Arc::new(pool);
 
-        let cache: Cache<String, Arc<UserEntity>> = Cache::builder()
+        let cache: Cache<String, Arc<User>> = Cache::builder()
             .time_to_live(Duration::from_secs(600))
             .max_capacity(10_000)
             .build();
