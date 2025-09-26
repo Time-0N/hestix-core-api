@@ -1,6 +1,11 @@
 /target
 .idea/
-.env
 .DS_Store
 .claude
+# Sensitive files
+*.env
+*.pat
 /devops/login-client.pat
+
+# Exclude .example
+!.env.example

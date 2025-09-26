@@ -18,7 +18,17 @@ pub struct Config {
     pub scopes: String,
 
     pub zitadel_service_key: Option<String>,
+    pub environment: String,
+}
 
+impl Config {
+    pub fn is_production(&self) -> bool {
+        self.environment.to_lowercase() == "production"
+    }
+
+    pub fn is_development(&self) -> bool {
+        self.environment.to_lowercase() == "development"
+    }
 }
 
 impl Config {
@@ -50,6 +60,8 @@ impl Config {
             .unwrap_or_else(|_| "info".to_string());
         let allowed_origin = env::var("CORS_ALLOWED_ORIGIN")
             .unwrap_or_else(|_| "info".to_string());
+        let environment = env::var("ENVIRONMENT")
+            .unwrap_or_else(|_| "development".to_string());
 
         let zitadel_service_key = std::env::var("ZITADEL_SERVICE_KEY_JSON").ok()
             .or_else(|| {
@@ -80,6 +92,7 @@ impl Config {
             redirect_url,
             scopes,
             zitadel_service_key,
+            environment,
         })
     }
 }

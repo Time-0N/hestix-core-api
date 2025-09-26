@@ -1,28 +1,37 @@
 // src/services/user_service.rs
+use std::collections::HashMap;
 use std::sync::Arc;
 use sqlx::Error;
 use tokio::sync::Mutex;
-use crate::shared::user_resolver::UserResolver;
+use moka::future::Cache;
 use crate::domain::entities::User;
+use crate::domain::repositories::UserRepository;
 use crate::infrastructure::oidc::{OidcClaims, OidcError};
 // ZitadelManagementClient import removed - now using trait
 use crate::infrastructure::oidc::provider::OidcAdminApi;
 
+fn id_key(issuer: &str, subject: &str) -> String {
+    format!("{}::{}", issuer, subject)
+}
+
 #[derive(Clone)]
 pub struct UserService {
-    pub user_resolver: Arc<UserResolver>,
+    pub user_repository: Arc<dyn UserRepository>,
+    pub cache: Cache<String, Arc<User>>,
     pub management_client: Option<Arc<Mutex<dyn OidcAdminApi + Send + Sync>>>,
     pub issuer_url: String,
 }
 
 impl UserService {
     pub fn new(
-        user_resolver: Arc<UserResolver>,
+        user_repository: Arc<dyn UserRepository>,
+        cache: Cache<String, Arc<User>>,
         management_client: Option<Arc<Mutex<dyn OidcAdminApi + Send + Sync>>>,
         issuer_url: String,
     ) -> Self {
         Self {
-            user_resolver,
+            user_repository,
+            cache,
             management_client,
             issuer_url,
         }
@@ -33,7 +42,42 @@ impl UserService {
         issuer: &str,
         subject: &str,
     ) -> Result<Option<Arc<User>>, Error> {
-        self.user_resolver.find_and_cache_user_by_identity(issuer, subject).await
+        self.find_and_cache_user_by_identity(issuer, subject).await
+    }
+
+    pub async fn get_user_by_identity_bypass_cache(
+        &self,
+        issuer: &str,
+        subject: &str,
+    ) -> Result<Option<Arc<User>>, Error> {
+        let maybe_user = self.user_repository.find_by_subject(issuer, subject).await?;
+        if let Some(u) = maybe_user {
+            let arc_user = Arc::new(u);
+            // Update cache with fresh data
+            let key = id_key(issuer, subject);
+            self.cache.insert(key, arc_user.clone()).await;
+            return Ok(Some(arc_user));
+        }
+        Ok(None)
+    }
+
+    async fn find_and_cache_user_by_identity(
+        &self,
+        issuer: &str,
+        subject: &str,
+    ) -> Result<Option<Arc<User>>, Error> {
+        let key = id_key(issuer, subject);
+        if let Some(user) = self.cache.get(&key).await {
+            return Ok(Some(user));
+        }
+
+        let maybe_user = self.user_repository.find_by_subject(issuer, subject).await?;
+        if let Some(u) = maybe_user {
+            let arc_user = Arc::new(u);
+            self.cache.insert(key, arc_user.clone()).await;
+            return Ok(Some(arc_user));
+        }
+        Ok(None)
     }
 
     pub async fn sync_user_from_claims(
@@ -52,8 +96,7 @@ impl UserService {
         let email = claims.email.clone()
             .ok_or_else(|| OidcError::Provider("Email is required".to_string()))?;
 
-        self.user_resolver
-            .upsert_and_cache_user(issuer, sub, &username, &email)
+        self.upsert_and_cache_user(issuer, sub, &username, &email)
             .await
             .map_err(|e| OidcError::Provider(format!("User upsert failed: {}", e)))?;
 
@@ -85,8 +128,7 @@ impl UserService {
                     }
                 };
 
-                match self.user_resolver
-                    .upsert_and_cache_user(&self.issuer_url, &user.idp_subject, &username, &email)
+                match self.upsert_and_cache_user(&self.issuer_url, &user.idp_subject, &username, &email)
                     .await
                 {
                     Ok(_) => synced_count += 1,
@@ -109,25 +151,81 @@ impl UserService {
             let zitadel_subjects: std::collections::HashSet<String> =
                 users.into_iter().map(|u| u.idp_subject).collect();
 
-            let db_identities = self.user_resolver.get_all_identities().await?;
+            let db_identities = self.get_all_identities().await?;
             for (db_issuer, db_subject) in db_identities {
                 if db_issuer == self.issuer_url && !zitadel_subjects.contains(&db_subject) {
                     tracing::warn!("Removing user {} - no longer in ZITADEL", db_subject);
-                    self.user_resolver.remove_user_from_cache_and_db(&db_issuer, &db_subject).await?;
+                    self.remove_user_from_cache_and_db(&db_issuer, &db_subject).await?;
                 }
             }
             */
         } else {
             // Just refresh cache from DB if no management client
             tracing::info!("No ZITADEL Management client - refreshing cache from database");
-            self.user_resolver.refresh_cache().await?;
+            self.refresh_cache().await?;
         }
 
         tracing::info!(
             "User cache contains {} users", 
-            self.user_resolver.cache.entry_count()
+            self.cache.entry_count()
         );
 
         Ok(())
+    }
+
+    pub async fn upsert_and_cache_user(
+        &self,
+        issuer: &str,
+        subject: &str,
+        username: &str,
+        email: &str
+    ) -> Result<Arc<User>, sqlx::Error> {
+        let user = self.user_repository.upsert_user(issuer, subject, username, email).await?;
+        let key = id_key(&user.idp_issuer, &user.idp_subject);
+        let arc_user = Arc::new(user);
+        self.cache.insert(key, arc_user.clone()).await;
+        Ok(arc_user)
+    }
+
+    pub async fn remove_user_from_cache_and_db(&self, issuer: &str, subject: &str) -> Result<(), sqlx::Error> {
+        let key = id_key(issuer, subject);
+        self.cache.invalidate(&key).await;
+        self.user_repository.delete_by_subject(issuer, subject).await
+    }
+
+    pub async fn get_all_users_mapped_to_key(&self) -> Result<HashMap<String, Arc<User>>, sqlx::Error> {
+        let users = self.user_repository.get_all_users().await?;
+        Ok(users.into_iter()
+            .map(|u| (id_key(&u.idp_issuer, &u.idp_subject), Arc::new(u)))
+            .collect())
+    }
+
+    pub async fn refresh_cache(&self) -> Result<(), anyhow::Error> {
+        tracing::info!("Refreshing user cache from database");
+
+        // Clear existing cache
+        self.cache.invalidate_all();
+
+        // Get all users from database and populate cache
+        let users_map = self.get_all_users_mapped_to_key().await
+            .map_err(|e| anyhow::anyhow!("Failed to refresh cache: {}", e))?;
+
+        // Populate cache with all users
+        for (key, user) in users_map {
+            self.cache.insert(key, user).await;
+        }
+
+        tracing::info!("Cache refreshed with {} users", self.cache.entry_count());
+        Ok(())
+    }
+
+    pub async fn get_all_identities(&self) -> Result<Vec<(String, String)>, anyhow::Error> {
+        // Extract identities from all users
+        let users = self.user_repository.get_all_users().await
+            .map_err(|e| anyhow::anyhow!("Failed to fetch users: {}", e))?;
+
+        Ok(users.into_iter()
+            .map(|u| (u.idp_issuer, u.idp_subject))
+            .collect())
     }
 }

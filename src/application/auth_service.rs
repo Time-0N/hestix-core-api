@@ -62,4 +62,8 @@ impl AuthService {
     pub async fn build_authorize_url(&self, code_challenge: Option<&str>, state: Option<String>) -> String {
         self.provider.authorize_url(state, code_challenge).await
     }
+
+    pub async fn revoke_token(&self, token: &str) -> Result<(), OidcError> {
+        self.provider.revoke_token(token).await
+    }
 }

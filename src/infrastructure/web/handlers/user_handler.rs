@@ -3,7 +3,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use crate::app_state::AppState;
 use crate::application::dto::user::user_response::UserResponse;
-use crate::shared::middleware::security::extractor::Claims;
+use crate::shared::middleware::Claims;
 use crate::require_role;
 use crate::infrastructure::web::errors::server_fail;
 

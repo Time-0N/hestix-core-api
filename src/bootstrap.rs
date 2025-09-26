@@ -15,7 +15,7 @@ use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::{info, warn, Level};
 use crate::infrastructure::config::Config;
 use crate::app_state::AppState;
-use crate::shared::middleware::security::security_layer::{apply_security_layers};
+use crate::shared::middleware::apply_security_layers;
 use crate::infrastructure::web::routes::create_router;
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::infrastructure::web::client::build_http_client;
@@ -81,6 +81,8 @@ pub async fn run() -> anyhow::Result<()> {
     let cfg = Config::from_env().context("loading config")?;
 
     init_tracing(Some(&cfg.log_filter));
+
+    info!("Booting with environment: {}", cfg.environment);
 
     let pool = PgPoolOptions::new()
         .max_connections(cfg.db_max_connections)

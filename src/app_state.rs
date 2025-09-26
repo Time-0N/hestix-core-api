@@ -10,7 +10,6 @@ use crate::domain::entities::User;
 use crate::infrastructure::persistence::{PgUserRepo, UserRepository};
 use crate::application::auth_service::AuthService;
 use crate::application::user_service::UserService;
-use crate::shared::user_resolver::UserResolver;
 use crate::infrastructure::oidc::provider::OidcProvider;
 // ZitadelManagementClient import removed - now using trait
 use crate::infrastructure::oidc::provider::OidcAdminApi;
@@ -37,9 +36,8 @@ impl AppState {
         let http_client = http_client;
 
         let user_repository: Arc<dyn UserRepository> = Arc::new(PgUserRepo::new(db.clone()));
-        let user_resolver = Arc::new(UserResolver::new(user_repository.clone(), cache));
 
-        let user_service = Arc::new(UserService::new(user_resolver.clone(), management_client, cfg.issuer_url.clone()));
+        let user_service = Arc::new(UserService::new(user_repository, cache, management_client, cfg.issuer_url.clone()));
         let auth_service = Arc::new(AuthService::new(provider, user_service.clone()));
 
         AppState { config, db, auth_service, user_service, http_client }

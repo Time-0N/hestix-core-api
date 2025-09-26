@@ -12,7 +12,7 @@ use tracing::{debug, info};
 
 use crate::app_state::AppState;
 use crate::infrastructure::web::cookies::cookie_helper::{access_cookie, oauth_state_cookie, pkce_verifier_cookie, refresh_cookie, remove_cookie};
-use crate::shared::middleware::security::extractor::Claims;
+use crate::shared::middleware::Claims;
 use crate::infrastructure::web::errors::auth_fail;
 
 #[derive(Deserialize)]
@@ -23,12 +23,19 @@ pub struct AuthCallbackRequest {
 
 fn generate_pkce_pair() -> (String, String) {
     let rng = SystemRandom::new();
-    let mut verifier_bytes = [0u8; 32];
-    rng.fill(&mut verifier_bytes).expect("OS RNG");
+    // Use 64 bytes (512 bits) for enhanced security - more than the minimum 43 chars
+    let mut verifier_bytes = [0u8; 64];
+    rng.fill(&mut verifier_bytes).expect("OS RNG failed");
 
     let code_verifier = general_purpose::URL_SAFE_NO_PAD.encode(verifier_bytes);
+
+    // Always use SHA256 for PKCE challenge (S256 method)
     let digest = Sha256::digest(code_verifier.as_bytes());
     let code_challenge = general_purpose::URL_SAFE_NO_PAD.encode(digest);
+
+    // Log PKCE method for security audit (without revealing actual values)
+    debug!("Generated PKCE pair with S256 method, verifier_len={}, challenge_len={}",
+           code_verifier.len(), code_challenge.len());
 
     (code_verifier, code_challenge)
 }
@@ -36,8 +43,14 @@ fn generate_pkce_pair() -> (String, String) {
 fn random_b64url(len: usize) -> String {
     let rng = SystemRandom::new();
     let mut bytes = vec![0u8; len];
-    rng.fill(&mut bytes).expect("OS RNG");
+    rng.fill(&mut bytes).expect("OS RNG failed");
     general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+}
+
+/// Generate cryptographically secure state with enhanced entropy
+fn generate_secure_state() -> String {
+    // Use 48 bytes (384 bits) for state - significantly more than minimum requirements
+    random_b64url(48)
 }
 
 pub async fn login_handler(State(state): State<AppState>, jar: CookieJar) -> impl IntoResponse {
@@ -49,7 +62,7 @@ pub async fn login_handler(State(state): State<AppState>, jar: CookieJar) -> imp
         .remove(remove_cookie("refresh_token"));
 
     let (verifier, challenge) = generate_pkce_pair();
-    let state_str = random_b64url(32);
+    let state_str = generate_secure_state();
 
     // Mask sensitive values if you *must* log
     debug!(state_len = state_str.len(), "generated oauth state");
@@ -84,7 +97,19 @@ pub async fn oauth_callback_handler(
 
     // Avoid logging values; if you must:
     debug!(recv_len = received_state.len(), stored_len = stored_state.len(), "verifying state");
-    if received_state != stored_state {
+
+    // Use constant-time comparison to prevent timing attacks
+    if received_state.len() != stored_state.len() {
+        return Err((StatusCode::BAD_REQUEST, "state mismatch".to_string()));
+    }
+
+    // Constant-time comparison using XOR
+    let mut are_equal = 0u8;
+    for (a, b) in received_state.bytes().zip(stored_state.bytes()) {
+        are_equal |= a ^ b;
+    }
+
+    if are_equal != 0 {
         return Err((StatusCode::BAD_REQUEST, "state mismatch".to_string()));
     }
 
@@ -139,12 +164,33 @@ pub async fn refresh_handler(
     Ok((jar, Json(serde_json::json!({"status": "refreshed"}))))
 }
 
-pub async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
+pub async fn logout_handler(
+    State(state): State<AppState>,
+    jar: CookieJar
+) -> impl IntoResponse {
+    // Attempt to revoke tokens at the provider before clearing local cookies
+    if let Some(refresh_token_cookie) = jar.get("refresh_token") {
+        if let Err(e) = state.auth_service.revoke_token(refresh_token_cookie.value()).await {
+            tracing::warn!("Failed to revoke refresh token at provider: {}", e);
+            // Continue with logout even if revocation fails
+        }
+    }
+
+    if let Some(access_token_cookie) = jar.get("access_token") {
+        if let Err(e) = state.auth_service.revoke_token(access_token_cookie.value()).await {
+            tracing::warn!("Failed to revoke access token at provider: {}", e);
+            // Continue with logout even if revocation fails
+        }
+    }
+
+    // Clear all auth-related cookies
     let jar = jar
         .remove(remove_cookie("access_token"))
         .remove(remove_cookie("refresh_token"))
         .remove(remove_cookie("pkce_verifier"))
         .remove(remove_cookie("oauth_state"));
+
+    info!("User logged out successfully");
 
     let target = std::env::var("FRONTEND_URL")
         .unwrap_or_else(|_| "http://localhost:5173".to_string());

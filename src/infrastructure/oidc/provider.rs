@@ -15,6 +15,9 @@ pub trait OidcProvider: Send + Sync {
     async fn validate_access_token(&self, token: &str) -> Result<OidcClaims, OidcError>;
 
     async fn validate_id_token(&self, id_token: &str) -> Result<OidcClaims, OidcError>;
+
+    /// Revoke a token at the provider (for proper logout)
+    async fn revoke_token(&self, token: &str) -> Result<(), OidcError>;
 }
 
 #[async_trait::async_trait]

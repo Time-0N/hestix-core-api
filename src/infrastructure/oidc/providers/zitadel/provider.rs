@@ -127,4 +127,37 @@ impl OidcProvider for ZitadelProvider {
         // Reuse your JWKS validator but force the audience to client_id
         self.jwks.validate(id_token, &self.discovery, Some(&self.client_id))
     }
+
+    async fn revoke_token(&self, token: &str) -> Result<(), OidcError> {
+        // Use Zitadel's revocation endpoint (RFC 7009)
+        let revoke_url = format!("{}/oauth/v2/revoke", self.discovery.issuer.trim_end_matches('/'));
+
+        let mut form = vec![
+            ("token", token),
+            ("client_id", &self.client_id),
+        ];
+
+        // If client secret is available, add it (though for public clients it might not be needed)
+        // For PKCE flows, client_secret might not be required
+        form.push(("token_type_hint", "refresh_token"));
+
+        let resp = self.http_client
+            .post(&revoke_url)
+            .form(&form)
+            .send()
+            .await
+            .map_err(OidcError::Network)?;
+
+        // RFC 7009: The authorization server responds with HTTP status code 200
+        // if the revocation is successful or if the client submitted an invalid token
+        if resp.status().is_success() {
+            tracing::info!("Token revocation successful");
+            Ok(())
+        } else {
+            tracing::warn!("Token revocation failed with status: {}", resp.status());
+            // Don't treat revocation failures as critical errors since the token
+            // might already be invalid or expired
+            Ok(())
+        }
+    }
 }

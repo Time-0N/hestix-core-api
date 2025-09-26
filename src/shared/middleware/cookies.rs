@@ -6,7 +6,8 @@ use axum::{
 };
 use axum_extra::extract::cookie::CookieJar;
 
-pub async fn propagate_cookies(
+/// Middleware to propagate cookies from request extensions to response
+pub async fn propagate_cookies_middleware(
     mut req: Request<Body>,
     next: Next,
 ) -> Response {
