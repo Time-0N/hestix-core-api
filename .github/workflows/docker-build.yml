@@ -1,33 +1,111 @@
-name: Build and Push Docker Image
+name: CI and Docker Build
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
-  docker:
+  # 1) Gatekeeper: verify .sqlx cache matches schema/queries
+  sqlx-prepare-check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hestixdb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/hestixdb
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install sqlx-cli --no-default-features --features rustls,postgres --locked
+      - run: |
+          sqlx database create
+          sqlx migrate run
+      - name: Ensure .sqlx cache is current
+        run: cargo sqlx prepare --check --workspace -- --all-targets --all-features
+
+  # 2) Offline build & tests only run if prepare-check passed
+  build-offline:
+    needs: [sqlx-prepare-check]
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked --all-features
+      - run: cargo test --locked --all-features
+
+  # 3) Docker build only runs if both previous jobs passed
+  docker:
+    needs: [sqlx-prepare-check, build-offline]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    env:
+      CARGO_TERM_COLOR: always
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up database for Docker build
+        run: |
+          # Install sqlx-cli
+          cargo install sqlx-cli --no-default-features --features rustls,postgres --locked
+
+          # Create database if it doesn't exist and run migrations
+          echo "Setting up database..."
+          sqlx database create || echo "Database already exists"
+          sqlx migrate run
+          echo "Database setup complete!"
+        env:
+          DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: t1me0n/hestix-core-api
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: t1me0n/hestix-core-api:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=t1me0n/hestix-core-api:buildcache
           cache-to: type=registry,ref=t1me0n/hestix-core-api:buildcache,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            DATABASE_URL=${{ secrets.BUILD_DATABASE_URL }}&prepared_statements=false
