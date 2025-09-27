@@ -35,7 +35,7 @@ impl UserRepositoryTrait for PgUserRepo {
             issuer,
             subject
         )
-            .fetch_optional(&*self.pool)  // Use &* like your original
+            .fetch_optional(&*self.pool)
             .await
     }
 
@@ -64,7 +64,7 @@ impl UserRepositoryTrait for PgUserRepo {
             username,
             email
         )
-            .fetch_one(&*self.pool)  // Use &* like your original
+            .fetch_one(&*self.pool)
             .await
     }
 
@@ -77,7 +77,7 @@ impl UserRepositoryTrait for PgUserRepo {
             issuer,
             subject
         )
-            .execute(&*self.pool)  // Use &* like your original
+            .execute(&*self.pool)
             .await?;
         Ok(())
     }
@@ -142,7 +142,7 @@ impl PgUserRepo {
             FROM users
             "#
         )
-            .fetch_all(&*self.pool)  // Use &* like your original
+            .fetch_all(&*self.pool)
             .await?;
 
         Ok(rows

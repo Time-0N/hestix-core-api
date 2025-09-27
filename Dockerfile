@@ -1,24 +1,25 @@
-# Required Environment Variables (loaded via --env-file or container envs):
-# - DATABASE_URL
-# - PORT
-# - DB_MAX_CONNECTIONS
-# - KEYCLOAK_BASE_URL
-# - KEYCLOAK_REALM
-# - KEYCLOAK_CLIENT_ID
-# - KEYCLOAK_CLIENT_SECRET
-# - KEYCLOAK_ALLOWED_AUDIENCES
-# - KEYCLOAK_REDIRECT_URI
-
-# Build Stage
-FROM rustlang/rust:nightly-slim as builder
+# Build Stage - Optimized with dependency caching
+FROM rust:latest as builder
 LABEL authors="Time_ON"
-
 WORKDIR /app
 
-COPY . .
+# Use SQLX offline mode - no DATABASE_URL needed
+ENV SQLX_OFFLINE=true
 
+# Install build dependencies first
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 
+# Copy dependency files first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+
+# Create dummy main.rs and build dependencies (this will be cached)
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src target/release/deps/hestix*
+
+# Copy .sqlx directory first (needed for offline SQLX builds)
+COPY .sqlx ./.sqlx
+
+# Now copy everything else and build
+COPY . .
 RUN cargo build --release
 
 # Runtime Stage

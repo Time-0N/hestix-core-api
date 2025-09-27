@@ -1,0 +1,15 @@
+target/
+.git/
+.github/
+.env
+.env.*
+!.env.example
+*.md
+!README.md
+.gitignore
+.idea/
+.vscode/
+Dockerfile*
+docker-compose*
+devops/
+.claude/
