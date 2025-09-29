@@ -3,7 +3,7 @@ FROM rust:latest as builder
 LABEL authors="Time_ON"
 WORKDIR /app
 
-# Use SQLX offline mode - no DATABASE_URL needed
+# Use SQLX offline mode
 ENV SQLX_OFFLINE=true
 
 # Install build dependencies first
@@ -18,7 +18,6 @@ RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && r
 # Copy .sqlx directory first (needed for offline SQLX builds)
 COPY .sqlx ./.sqlx
 
-# Now copy everything else and build
 COPY . .
 RUN cargo build --release
 

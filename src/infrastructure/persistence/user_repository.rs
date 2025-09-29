@@ -1,4 +1,3 @@
-// In repositories/user_repository.rs
 use std::sync::Arc;
 use async_trait::async_trait;
 use sqlx::{Error, PgPool};

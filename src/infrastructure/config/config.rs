@@ -17,7 +17,7 @@ pub struct Config {
     pub redirect_url: String,
     pub scopes: String,
 
-    pub zitadel_service_key: Option<String>,
+    pub zitadel_service_token: Option<String>,
     pub environment: String,
 }
 
@@ -63,14 +63,14 @@ impl Config {
         let environment = env::var("ENVIRONMENT")
             .unwrap_or_else(|_| "development".to_string());
 
-        let zitadel_service_key = std::env::var("ZITADEL_SERVICE_KEY_JSON").ok()
+        let zitadel_service_token = std::env::var("ZITADEL_SERVICE_TOKEN").ok()
             .or_else(|| {
-                std::env::var("ZITADEL_SERVICE_KEY_PATH").ok()
+                std::env::var("ZITADEL_SERVICE_TOKEN_PATH").ok()
                     .and_then(|path| {
                         match std::fs::read_to_string(&path) {
                             Ok(content) => {
-                                tracing::info!("Loaded ZITADEL service key from {}", path);
-                                Some(content)
+                                tracing::info!("Loaded ZITADEL service token from {}", path);
+                                Some(content.trim().to_string())
                             }
                             Err(e) => {
                                 tracing::warn!("Failed to load service key from {}: {}", path, e);
@@ -91,7 +91,7 @@ impl Config {
             client_id,
             redirect_url,
             scopes,
-            zitadel_service_key,
+            zitadel_service_token,
             environment,
         })
     }

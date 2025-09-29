@@ -7,7 +7,6 @@ use moka::future::Cache;
 use crate::domain::entities::User;
 use crate::domain::repositories::UserRepository;
 use crate::infrastructure::oidc::{OidcClaims, OidcError};
-// ZitadelManagementClient import removed - now using trait
 use crate::infrastructure::oidc::provider::OidcAdminApi;
 
 fn id_key(issuer: &str, subject: &str) -> String {

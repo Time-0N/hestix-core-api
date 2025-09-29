@@ -11,7 +11,6 @@ use crate::infrastructure::persistence::{PgUserRepo, UserRepository};
 use crate::application::auth_service::AuthService;
 use crate::application::user_service::UserService;
 use crate::infrastructure::oidc::provider::OidcProvider;
-// ZitadelManagementClient import removed - now using trait
 use crate::infrastructure::oidc::provider::OidcAdminApi;
 
 #[derive(Clone, FromRef)]

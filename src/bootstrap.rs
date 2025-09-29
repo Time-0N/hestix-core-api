@@ -19,7 +19,7 @@ use crate::shared::middleware::apply_security_layers;
 use crate::infrastructure::web::routes::create_router;
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::infrastructure::web::client::build_http_client;
-use crate::infrastructure::oidc::providers::zitadel::management::ZitadelManagementClient;
+use crate::infrastructure::oidc::providers::zitadel::admin::ZitadelAdminApi;
 
 async fn shutdown_signal() {
     // Wait for Ctrl+C or SIGINT
@@ -69,7 +69,7 @@ pub fn init_tracing(cfg_filter: Option<&str>) {
 
     tracing_subscriber::registry()
         .with(filter)
-        .with(fmt::layer().compact()) // nice console logs
+        .with(fmt::layer().compact())
         .init();
 }
 
@@ -114,24 +114,24 @@ pub async fn run() -> anyhow::Result<()> {
         ).await?
     );
 
-    let management_client = if let Some(service_key) = &cfg.zitadel_service_key {
-        match ZitadelManagementClient::new(
+    let management_client = if let Some(service_token) = &cfg.zitadel_service_token {
+        match ZitadelAdminApi::new(
             http_client.clone(),
-            cfg.issuer_url.clone(),
-            service_key
+            &cfg.issuer_url,
+            service_token.clone()
         ) {
             Ok(client) => {
-                info!("ZITADEL Management API client initialized");
+                info!("ZITADEL Admin API client initialized");
                 Some(Arc::new(Mutex::new(client)))
             }
             Err(e) => {
-                warn!("Failed to initialize ZITADEL Management API: {}", e);
+                warn!("Failed to initialize ZITADEL Admin API: {}", e);
                 warn!("User sync will only refresh from database");
                 None
             }
         }
     } else {
-        info!("ZITADEL Management API not configured - user sync will only refresh from database");
+        info!("ZITADEL Admin API not configured - user sync will only refresh from database");
         None
     };
 
@@ -143,8 +143,8 @@ pub async fn run() -> anyhow::Result<()> {
     let state = AppState::new(cfg.clone(), pool.clone(), provider.clone(), http_client, management_client_trait);
 
     // Start user sync task only if ZITADEL service key is configured
-    if cfg.zitadel_service_key.is_some() {
-        info!("ZITADEL_SERVICE_KEY configured - starting user sync job");
+    if cfg.zitadel_service_token.is_some() {
+        info!("ZITADEL_SERVICE_TOKEN configured - starting user sync job");
         tokio::spawn({
             let state = state.clone();
             async move {
@@ -152,7 +152,7 @@ pub async fn run() -> anyhow::Result<()> {
             }
         });
     } else {
-        warn!("ZITADEL_SERVICE_KEY not set, skipping start of user sync job");
+        warn!("ZITADEL_SERVICE_TOKEN not set, skipping start of user sync job");
     }
 
     let app = apply_security_layers(create_router())

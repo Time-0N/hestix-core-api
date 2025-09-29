@@ -50,9 +50,3 @@ ring = "0.17.14"
 once_cell = "1.21.3"
 url = "2.5.4"
 
-# Cargo mirror
-[source.crates-io]
-replace-with = "cloudflare"
-
-[source.cloudflare]
-registry = "https://index.crates.io"

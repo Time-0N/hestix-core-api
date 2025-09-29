@@ -122,16 +122,16 @@ OIDC_SCOPES="openid profile email offline_access"
 # =========================
 # ZITADEL User Sync (Optional)
 # =========================
-# Option 1: Service account key as JSON string
-# ZITADEL_SERVICE_KEY_JSON={"type":"serviceaccount",...}
+# Option 1: Personal Access Token as string
+# ZITADEL_SERVICE_TOKEN=your_personal_access_token_here
 
-# Option 2: Path to service account key file
-# ZITADEL_SERVICE_KEY_PATH=/path/to/service-account-key.json
+# Option 2: Path to token file
+# ZITADEL_SERVICE_TOKEN_PATH=/path/to/token.pat
 ```
 
 ### User Synchronization
 - **Manual Sync**: Users are synced on login automatically
-- **Automated Sync**: Set `ZITADEL_SERVICE_KEY_JSON` or `ZITADEL_SERVICE_KEY_PATH` for background sync every 24 hours
+- **Automated Sync**: Set `ZITADEL_SERVICE_TOKEN` or `ZITADEL_SERVICE_TOKEN_PATH` for background sync every 24 hours
 - **Cache Integration**: User data is cached in memory for performance
 
 > **Docker note:** if your API runs in Docker and ZITADEL is another container, set `OIDC_ISSUER_URL=http://zitadel:8080` (service name), not `localhost`. The browser‑facing redirect URI should still use `http://localhost:5000/...`.
